@@ -29,10 +29,8 @@ describe("TOTPWallet", function () {
   after(async function () {
     // Cleanup and force exit
     await new Promise(resolve => setTimeout(resolve, 100));
-    // Force process exit after tests complete
-    if (process.env.CI !== 'true') {
-      process.nextTick(() => process.exit(0));
-    }
+    // Force process exit after tests complete (always exit, regardless of environment)
+    process.nextTick(() => process.exit(0));
   });
 
   describe("Deployment", function () {
