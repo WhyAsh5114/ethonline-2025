@@ -1,0 +1,115 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  blockchain-tests:
+    name: Blockchain - Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+      
+      - name: Install circom
+        run: |
+          wget -q https://github.com/iden3/circom/releases/download/v2.2.1/circom-linux-amd64
+          chmod +x circom-linux-amd64
+          sudo mv circom-linux-amd64 /usr/local/bin/circom
+      
+      - name: Cache Powers of Tau
+        uses: actions/cache@v4
+        with:
+          path: ./circuits/build/powersOfTau28_hez_final_14.ptau
+          key: powersoftau-28-14
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build circuits
+        working-directory: ./circuits
+        run: |
+          mkdir -p build
+          [ ! -f build/powersOfTau28_hez_final_14.ptau ] && wget -q -O build/powersOfTau28_hez_final_14.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau || true
+          circom src/totp_verifier.circom --r1cs --wasm --sym -o build/
+          npx tsx scripts/setup.ts
+      
+      - name: Build and test blockchain
+        working-directory: ./blockchain
+        run: |
+          pnpm compile
+          pnpm test
+          pnpm generate
+
+  circuits-build:
+    name: Circuits - Build & Verify
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+      
+      - name: Install circom
+        run: |
+          wget -q https://github.com/iden3/circom/releases/download/v2.2.1/circom-linux-amd64
+          chmod +x circom-linux-amd64
+          sudo mv circom-linux-amd64 /usr/local/bin/circom
+      
+      - name: Cache Powers of Tau
+        uses: actions/cache@v4
+        with:
+          path: ./circuits/build/powersOfTau28_hez_final_14.ptau
+          key: powersoftau-28-14
+      
+      - name: Build and verify circuit
+        working-directory: ./circuits
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p build
+          [ ! -f build/powersOfTau28_hez_final_14.ptau ] && wget -q -O build/powersOfTau28_hez_final_14.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau || true
+          circom src/totp_verifier.circom --r1cs --wasm --sym -o build/
+          npx tsx scripts/setup.ts
+          npx tsx scripts/generate_proof.ts 12345 1729353600
+
+  frontend-build:
+    name: Frontend - Build & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+      
+      - name: Build and lint frontend
+        working-directory: ./frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm build

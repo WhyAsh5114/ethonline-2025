@@ -1,6 +1,7 @@
 packages:
   - blockchain
   - frontend
+  - circuits
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
