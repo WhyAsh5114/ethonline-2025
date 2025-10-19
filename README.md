@@ -1,9 +1,10 @@
 # ChronoVault
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](#)
+[![CI Pipeline](https://github.com/WhyAsh5114/ethonline-2025/actions/workflows/ci.yml/badge.svg)](https://github.com/WhyAsh5114/ethonline-2025/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-ISC-blue?style=flat-square)](#)
 [![Node.js](https://img.shields.io/badge/Node.js->=20-3c873a?style=flat-square)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tests](https://img.shields.io/badge/tests-35%20passing-success?style=flat-square)](#)
 
 A Web3 wallet with bank-grade security through TOTP-based two-factor authentication and zero-knowledge proofs.
 
