@@ -6,7 +6,7 @@
  */
 
 import { exec } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -84,6 +84,12 @@ async function setup(): Promise<void> {
       `snarkjs zkey export solidityverifier ${finalZkeyFile} ${verifierFile}`,
       { cwd: BUILD_DIR }
     );
+    
+    // Step 7: Rename contract from Groth16Verifier to TOTPVerifier
+    console.log('🔧 Renaming contract to TOTPVerifier...');
+    let verifierContent = readFileSync(verifierFile, 'utf-8');
+    verifierContent = verifierContent.replace(/contract Groth16Verifier/g, 'contract TOTPVerifier');
+    writeFileSync(verifierFile, verifierContent);
     console.log('✅ Solidity verifier generated\n');
 
     console.log('🎉 Setup complete!');
