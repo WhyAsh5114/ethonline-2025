@@ -37,6 +37,53 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
+      - name: Install circom
+        run: |
+          wget https://github.com/iden3/circom/releases/download/v2.2.1/circom-linux-amd64
+          chmod +x circom-linux-amd64
+          sudo mv circom-linux-amd64 /usr/local/bin/circom
+      
+      - name: Cache Powers of Tau
+        id: cache-powersoftau-blockchain
+        uses: actions/cache@v4
+        with:
+          path: ./circuits/build/powersOfTau28_hez_final_14.ptau
+          key: powersoftau-28-14
+      
+      - name: Download Powers of Tau (if not cached)
+        if: steps.cache-powersoftau-blockchain.outputs.cache-hit != 'true'
+        working-directory: .
+        run: |
+          mkdir -p circuits/build
+          wget -O circuits/build/powersOfTau28_hez_final_14.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau
+      
+      - name: Build circuits (required for tests)
+        working-directory: ./circuits
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p build
+          circom src/totp_verifier.circom --r1cs --wasm --sym -o build/
+          npx tsx scripts/setup.ts
+      
+      - name: Verify TOTPVerifier.sol generated
+        run: |
+          echo "Checking if TOTPVerifier.sol exists..."
+          if [ ! -f contracts/TOTPVerifier.sol ]; then
+            echo "❌ ERROR: TOTPVerifier.sol not found!"
+            ls -la contracts/
+            exit 1
+          fi
+          echo "✅ TOTPVerifier.sol found"
+          echo "File content preview:"
+          head -30 contracts/TOTPVerifier.sol
+          echo "Contract declaration:"
+          grep "^contract" contracts/TOTPVerifier.sol
+      
+      - name: Clean Hardhat cache
+        run: |
+          rm -rf cache artifacts
+          echo "Hardhat cache cleaned"
+      
       - name: Compile contracts
         run: pnpm compile
       
@@ -92,14 +139,14 @@ jobs:
         id: cache-powersoftau
         uses: actions/cache@v4
         with:
-          path: ./circuits/build/powersOfTau28_hez_final_18.ptau
-          key: powersoftau-28-18
+          path: ./circuits/build/powersOfTau28_hez_final_14.ptau
+          key: powersoftau-28-14
       
       - name: Download Powers of Tau (if not cached)
         if: steps.cache-powersoftau.outputs.cache-hit != 'true'
         run: |
           mkdir -p build
-          wget -O build/powersOfTau28_hez_final_18.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_18.ptau
+          wget -O build/powersOfTau28_hez_final_14.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau
       
       - name: Compile circuit
         run: |
@@ -205,14 +252,14 @@ jobs:
         id: cache-powersoftau
         uses: actions/cache@v4
         with:
-          path: ./circuits/build/powersOfTau28_hez_final_18.ptau
-          key: powersoftau-28-18
+          path: ./circuits/build/powersOfTau28_hez_final_14.ptau
+          key: powersoftau-28-14
       
       - name: Download Powers of Tau (if not cached)
         if: steps.cache-powersoftau.outputs.cache-hit != 'true'
         run: |
           mkdir -p circuits/build
-          wget -O circuits/build/powersOfTau28_hez_final_18.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_18.ptau
+          wget -O circuits/build/powersOfTau28_hez_final_14.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau
       
       - name: Build all workspaces
         run: pnpm build

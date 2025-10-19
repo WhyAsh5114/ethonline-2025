@@ -31,7 +31,7 @@ async function setup(): Promise<void> {
     if (!existsSync(PTAU_FILE)) {
       console.log('📥 Downloading Powers of Tau file (this may take a while)...');
       await execAsync(
-        `wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_14.ptau -O ${PTAU_FILE}`,
+        `wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_14.ptau -O ${PTAU_FILE}`,
         { cwd: BUILD_DIR }
       );
       console.log('✅ Powers of Tau file downloaded\n');

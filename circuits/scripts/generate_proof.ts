@@ -126,13 +126,42 @@ async function generateProof(
 // Parse command line arguments
 const args = process.argv.slice(2);
 
-if (args.length < 3) {
-  console.log('Usage: tsx scripts/generate_proof.ts <secret> <timestamp> <totpCode>');
+if (args.length < 2) {
+  console.log('Usage: tsx scripts/generate_proof.ts <secret> <timestamp> [totpCode]');
+  console.log('\nIf totpCode is not provided, it will be calculated automatically.');
   console.log('\nExample:');
-  console.log('  tsx scripts/generate_proof.ts 12345 1729353600 123456');
+  console.log('  tsx scripts/generate_proof.ts 12345 1729353600');
+  console.log('  tsx scripts/generate_proof.ts 12345 1729353600 586413');
   process.exit(1);
 }
 
-const [secret, timestamp, totpCode] = args;
+const [secret, timestampStr, providedCode] = args;
+const timestamp = Number.parseInt(timestampStr);
 
-generateProof(secret, Number.parseInt(timestamp), totpCode);
+// If TOTP code is not provided, calculate it
+async function getTotpCode(): Promise<string> {
+  if (providedCode) {
+    return providedCode;
+  }
+  
+  // Calculate TOTP code
+  const poseidon = await buildPoseidon();
+  const secretBigInt = BigInt(secret);
+  const timeCounter = BigInt(Math.floor(timestamp / 30));
+  const totpHash = poseidon([secretBigInt, timeCounter]);
+  const totpCode = BigInt(poseidon.F.toString(totpHash)) % BigInt(1000000);
+  
+  console.log('ℹ️  TOTP code not provided, calculated automatically:', totpCode.toString());
+  return totpCode.toString();
+}
+
+getTotpCode()
+  .then(totpCode => generateProof(secret, timestamp, totpCode))
+  .then(() => {
+    console.log('\n✅ All done!');
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('❌ Unexpected error:', error);
+    process.exit(1);
+  });
