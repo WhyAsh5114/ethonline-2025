@@ -2,10 +2,19 @@
   "name": "blockchain",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "typechain": "hardhat compile",
+    "generate": "wagmi generate",
+    "build": "pnpm compile && pnpm generate",
+    "test": "hardhat test"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
     "@types/node": "^22.18.11",
+    "@wagmi/cli": "^2.7.0",
+    "abitype": "^1.1.1",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.7",
     "typescript": "~5.8.3",

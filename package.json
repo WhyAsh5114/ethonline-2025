@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "pnpm --filter blockchain build && pnpm --filter frontend build",
+    "dev:blockchain": "pnpm --filter blockchain compile && pnpm --filter blockchain generate",
+    "dev:frontend": "pnpm --filter frontend dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1,53 +1,108 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+# Blockchain Package
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+This package contains the Hardhat smart contracts and TypeScript type generation for the ethonline-2025 monorepo.
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+## Setup
 
-## Project Overview
-
-This example project includes:
-
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
-
-## Usage
-
-### Running Tests
-
-To run all the tests in the project, execute the following command:
-
+Install dependencies from the root of the monorepo:
 ```shell
-npx hardhat test
+pnpm install
 ```
 
-You can also selectively run the Solidity or `node:test` tests:
+## Development Workflow
 
+### 1. Compile Contracts
 ```shell
-npx hardhat test solidity
-npx hardhat test nodejs
+pnpm compile
 ```
 
-### Make a deployment to Sepolia
-
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
-
+### 2. Generate TypeScript Types
+After compiling, generate TypeScript types using wagmi-cli:
 ```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
+pnpm generate
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
-
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
+Or run both in one command:
 ```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+pnpm build
+```
+
+### 3. Run Tests
+```shell
+pnpm test
+```
+
+## Type Generation
+
+This project uses `@wagmi/cli` to generate TypeScript types from compiled Hardhat contracts. The generated types are exported in `generated.ts` and can be imported in the frontend package:
+
+```typescript
+import { counterAbi, counterConfig } from 'blockchain/generated'
+```
+
+### Configuration
+
+Type generation is configured in `wagmi.config.ts`. To add deployed contract addresses:
+
+```typescript
+export default defineConfig({
+  out: 'generated.ts',
+  contracts: [],
+  plugins: [
+    hardhat({
+      project: '.',
+      deployments: {
+        Counter: {
+          31337: '0x5FbDB2315678afecb367f032d93F642f64180aa3', // Local hardhat
+          11155111: '0x...', // Sepolia testnet
+        },
+      },
+    }),
+  ],
+})
+```
+
+## Usage in Frontend
+
+The generated types provide full TypeScript type safety when interacting with contracts from the frontend:
+
+```typescript
+import { useReadContract, useWriteContract } from 'wagmi'
+import { counterAbi } from 'blockchain/generated'
+
+// Fully type-safe contract reads
+const { data } = useReadContract({
+  address: '0x...',
+  abi: counterAbi,
+  functionName: 'x', // Autocomplete and type-checked!
+})
+
+// Fully type-safe contract writes
+const { writeContract } = useWriteContract()
+writeContract({
+  address: '0x...',
+  abi: counterAbi,
+  functionName: 'incBy', // Autocomplete and type-checked!
+  args: [BigInt(5)], // Args are type-checked!
+})
+```
+
+## Project Structure
+
+```
+blockchain/
+├── contracts/          # Solidity contracts
+├── test/              # Contract tests
+├── ignition/          # Hardhat Ignition deployment modules
+├── scripts/           # Deployment and utility scripts
+├── generated.ts       # Generated TypeScript types (auto-generated)
+├── wagmi.config.ts    # Wagmi CLI configuration
+└── hardhat.config.ts  # Hardhat configuration
+```
+
+## Original Hardhat Documentation
+
+This project was bootstrapped from Hardhat 3 Beta. For more details:
 ```
 
 After setting the variable, you can run the deployment with the Sepolia network:
