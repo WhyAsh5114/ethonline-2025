@@ -1,19 +1,48 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, before, after } from "node:test";
 import { network } from "hardhat";
 import { parseEther, encodeFunctionData, keccak256, toHex, hexToBytes, pad } from "viem";
+import { generateTOTPProof, calculateSecretHash } from "./zkProofHelper.js";
 
-describe("TOTPWallet", async function () {
-  const { viem } = await network.connect();
-  const publicClient = await viem.getPublicClient();
-  const [owner, user1, user2] = await viem.getWalletClients();
+describe("TOTPWallet", function () {
+  let viem: Awaited<ReturnType<typeof network.connect>>["viem"];
+  let publicClient: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getPublicClient"]>>;
+  let owner: any, user1: any, user2: any;
+  let verifier: any;
+  
+  // Test secret - hash will be calculated in tests that need it
+  const testSecret = 12345n;
+  // Pre-calculate the hash synchronously by computing it inline
+  // secretHash for 12345 with Poseidon
+  const testSecretHash = 4267533774488295900887461483015112262021273608761099826938271132511348470966n;
+
+  before(async function () {
+    const connection = await network.connect();
+    viem = connection.viem;
+    publicClient = await viem.getPublicClient();
+    [owner, user1, user2] = await viem.getWalletClients();
+    
+    // Deploy verifier contract once for all tests
+    verifier = await viem.deployContract("TOTPVerifier");
+  });
+
+  after(async function () {
+    // Cleanup and force exit
+    await new Promise(resolve => setTimeout(resolve, 100));
+    // Force process exit after tests complete
+    if (process.env.CI !== 'true') {
+      process.nextTick(() => process.exit(0));
+    }
+  });
 
   describe("Deployment", function () {
     it("Should set the correct owner", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const walletOwner = await totpWallet.read.owner();
@@ -24,7 +53,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const entryPoint = await totpWallet.read.entryPoint();
@@ -35,7 +66,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const maxTimeDiff = await totpWallet.read.MAX_TIME_DIFFERENCE();
@@ -48,7 +81,9 @@ describe("TOTPWallet", async function () {
 
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const events = await publicClient.getContractEvents({
@@ -70,34 +105,37 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
-      const timestamp = BigInt(Math.floor(Date.now() / 1000));
-      const proof = toHex(new Uint8Array(32).fill(1));
-      const publicSignals = toHex(new Uint8Array(32).fill(2));
+      const secret = 12345n;
+      const block = await publicClient.getBlock();
+      const timestamp = block.timestamp;
 
-      await viem.assertions.emitWithArgs(
-        totpWallet.write.verifyZKProof([proof, timestamp, publicSignals]),
-        totpWallet,
-        "ZKProofVerified",
-        [timestamp, true],
-      );
+      const { pA, pB, pC, publicSignals } = await generateTOTPProof(secret, timestamp);
+
+      await totpWallet.write.verifyZKProof([pA, pB, pC, publicSignals]);
     });
 
     it("Should revert for timestamp in the future", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
-      const futureTimestamp = BigInt(Math.floor(Date.now() / 1000) + 3600);
-      const proof = toHex(new Uint8Array(32).fill(1));
-      const publicSignals = toHex(new Uint8Array(32).fill(2));
+      const secret = 12345n;
+      const block = await publicClient.getBlock();
+      const futureTimestamp = block.timestamp + 3600n;
+
+      const { pA, pB, pC, publicSignals } = await generateTOTPProof(secret, futureTimestamp);
 
       await assert.rejects(
-        totpWallet.write.verifyZKProof([proof, futureTimestamp, publicSignals]),
+        totpWallet.write.verifyZKProof([pA, pB, pC, publicSignals]),
         /TimestampInFuture/
       );
     });
@@ -106,51 +144,124 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
-      const oldTimestamp = BigInt(Math.floor(Date.now() / 1000) - 400);
-      const proof = toHex(new Uint8Array(32).fill(1));
-      const publicSignals = toHex(new Uint8Array(32).fill(2));
+      const secret = 12345n;
+      const block = await publicClient.getBlock();
+      const oldTimestamp = block.timestamp - 400n;
+
+      const { pA, pB, pC, publicSignals } = await generateTOTPProof(secret, oldTimestamp);
 
       await assert.rejects(
-        totpWallet.write.verifyZKProof([proof, oldTimestamp, publicSignals]),
+        totpWallet.write.verifyZKProof([pA, pB, pC, publicSignals]),
         /TimestampTooOld/
       );
     });
 
-    it("Should revert for empty proof", async function () {
+    it("Should revert for invalid proof", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
-      const timestamp = BigInt(Math.floor(Date.now() / 1000));
-      const proof = "0x";
-      const publicSignals = toHex(new Uint8Array(32).fill(2));
+      const block = await publicClient.getBlock();
+      const currentTime = block.timestamp;
+      const timeCounter = currentTime / 30n;
+
+      // Create invalid proof with wrong values but correct secretHash and fresh timestamp
+      const pA: [bigint, bigint] = [1n, 2n];
+      const pB: [[bigint, bigint], [bigint, bigint]] = [[3n, 4n], [5n, 6n]];
+      const pC: [bigint, bigint] = [7n, 8n];
+      const publicSignals: [bigint, bigint, bigint] = [123456n, timeCounter, testSecretHash];
 
       await assert.rejects(
-        totpWallet.write.verifyZKProof([proof, timestamp, publicSignals]),
+        totpWallet.write.verifyZKProof([pA, pB, pC, publicSignals]),
         /InvalidProof/
       );
     });
 
-    it("Should revert for empty public signals", async function () {
+    it("Should verify multiple proofs with same secret at different time windows", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
-      const timestamp = BigInt(Math.floor(Date.now() / 1000));
-      const proof = toHex(new Uint8Array(32).fill(1));
-      const publicSignals = "0x";
+      const block = await publicClient.getBlock();
+      const currentTime = block.timestamp;
+
+      // Verify first proof with current time
+      const proof1 = await generateTOTPProof(testSecret, currentTime);
+      await totpWallet.write.verifyZKProof([proof1.pA, proof1.pB, proof1.pC, proof1.publicSignals]);
+
+      // Verify second proof with a past time (different 30-second window = different TOTP code)
+      const timestamp2 = currentTime - 60n; // 60 seconds earlier (different time window)
+      const proof2 = await generateTOTPProof(testSecret, timestamp2);
+      await totpWallet.write.verifyZKProof([proof2.pA, proof2.pB, proof2.pC, proof2.publicSignals]);
+    });
+
+    it("Should reject proof with wrong secret hash", async function () {
+      const mockEntryPoint = await viem.deployContract("MockEntryPoint");
+      const totpWallet = await viem.deployContract("TOTPWallet", [
+        mockEntryPoint.address,
+        verifier.address,
+        owner.account.address,
+        testSecretHash,
+      ]);
+
+      const block = await publicClient.getBlock();
+      const timestamp = block.timestamp;
+
+      // Try to use a different secret (wrong secretHash)
+      const wrongSecret = 99999n;
+      const wrongProof = await generateTOTPProof(wrongSecret, timestamp);
 
       await assert.rejects(
-        totpWallet.write.verifyZKProof([proof, timestamp, publicSignals]),
-        /InvalidProof/
+        totpWallet.write.verifyZKProof([wrongProof.pA, wrongProof.pB, wrongProof.pC, wrongProof.publicSignals]),
+        /SecretHashMismatch/
       );
+    });
+
+    it("Should allow owner to update secret hash", async function () {
+      const mockEntryPoint = await viem.deployContract("MockEntryPoint");
+      const totpWallet = await viem.deployContract("TOTPWallet", [
+        mockEntryPoint.address,
+        verifier.address,
+        owner.account.address,
+        testSecretHash,
+      ]);
+
+      // Update to a new secret
+      const newSecret = 54321n;
+      const newSecretHash = await calculateSecretHash(newSecret);
+      
+      await totpWallet.write.updateSecretHash([newSecretHash]);
+
+      // Verify the hash was updated
+      const storedHash = await totpWallet.read.ownerSecretHash();
+      assert.equal(storedHash, newSecretHash);
+
+      // Old secret should not work
+      const block = await publicClient.getBlock();
+      const timestamp = block.timestamp;
+      const oldProof = await generateTOTPProof(testSecret, timestamp);
+      
+      await assert.rejects(
+        totpWallet.write.verifyZKProof([oldProof.pA, oldProof.pB, oldProof.pC, oldProof.publicSignals]),
+        /SecretHashMismatch/
+      );
+
+      // New secret should work
+      const newProof = await generateTOTPProof(newSecret, timestamp);
+      await totpWallet.write.verifyZKProof([newProof.pA, newProof.pB, newProof.pC, newProof.publicSignals]);
     });
   });
 
@@ -159,7 +270,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const timestamp = BigInt(Math.floor(Date.now() / 1000));
@@ -170,7 +283,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const currentBlock = await publicClient.getBlock();
@@ -182,7 +297,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const currentBlock = await publicClient.getBlock();
@@ -197,7 +314,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const currentBlock = await publicClient.getBlock();
@@ -214,7 +333,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -235,7 +356,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -254,7 +377,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
       const simpleContract = await viem.deployContract("SimpleContract");
 
@@ -279,7 +404,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -300,7 +427,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -328,7 +457,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -350,7 +481,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -372,7 +505,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -396,7 +531,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await totpWallet.write.transferOwnership([user1.account.address]);
@@ -409,7 +546,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await assert.rejects(
@@ -422,7 +561,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await assert.rejects(
@@ -435,7 +576,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -458,7 +601,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const amount = parseEther("1.0");
@@ -477,7 +622,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const amount = parseEther("1.0");
@@ -491,7 +638,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const amount = parseEther("1.0");
@@ -507,7 +656,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const amount = parseEther("1.0");
@@ -523,7 +674,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const amount = parseEther("1.0");
@@ -539,7 +692,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -582,7 +737,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       await owner.sendTransaction({
@@ -625,7 +782,9 @@ describe("TOTPWallet", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
         mockEntryPoint.address,
+        verifier.address,
         owner.account.address,
+        testSecretHash,
       ]);
 
       const userOpHash = keccak256(toHex("test user operation"));
