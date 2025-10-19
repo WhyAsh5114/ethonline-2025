@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@account-abstraction/contracts/interfaces/IAccount.sol";
 import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/core/UserOperationLib.sol";
+import "./TOTPVerifier.sol";
 
 /// @title TOTPWallet
 /// @notice ERC-4337 compatible smart contract wallet with TOTP-based ZK proof verification
@@ -19,8 +20,14 @@ contract TOTPWallet is IAccount {
     /// @notice The EntryPoint contract address for ERC-4337 account abstraction
     IEntryPoint private immutable _entryPoint;
     
+    /// @notice The ZK proof verifier contract
+    TOTPVerifier private immutable _verifier;
+    
     /// @notice Current owner of the wallet
     address public owner;
+    
+    /// @notice Hash of the owner's TOTP secret (for proof verification)
+    uint256 public ownerSecretHash;
     
     /// @notice Maximum allowed time difference for timestamp freshness (5 minutes)
     uint256 public constant MAX_TIME_DIFFERENCE = 5 minutes;
@@ -32,10 +39,12 @@ contract TOTPWallet is IAccount {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event TransactionExecuted(address indexed to, uint256 value, bytes data, bool success);
     event ZKProofVerified(uint256 timestamp, bool valid);
+    event SecretHashUpdated(uint256 indexed newSecretHash);
 
     error OnlyOwner();
     error OnlyEntryPoint();
     error InvalidProof();
+    error SecretHashMismatch();
     error TimestampTooOld();
     error TimestampInFuture();
     error TransactionFailed();
@@ -51,27 +60,39 @@ contract TOTPWallet is IAccount {
         _;
     }
 
-    /// @notice Initialize the wallet with EntryPoint and owner
+    /// @notice Initialize the wallet with EntryPoint, verifier, and owner
     /// @param anEntryPoint The ERC-4337 EntryPoint contract address
+    /// @param verifier The ZK proof verifier contract address
     /// @param anOwner The initial owner of the wallet
-    constructor(IEntryPoint anEntryPoint, address anOwner) {
+    /// @param initialSecretHash Hash of the owner's TOTP secret
+    constructor(IEntryPoint anEntryPoint, TOTPVerifier verifier, address anOwner, uint256 initialSecretHash) {
         _entryPoint = anEntryPoint;
+        _verifier = verifier;
         owner = anOwner;
+        ownerSecretHash = initialSecretHash;
         emit WalletInitialized(address(anEntryPoint), anOwner);
     }
 
     /// @notice Verify ZK proof for TOTP code with timestamp freshness check
-    /// @param proof The ZK proof bytes
-    /// @param timestamp The timestamp from the proof (must be within 5 minutes)
-    /// @param publicSignals Public signals from the ZK proof
+    /// @param pA First part of the Groth16 proof
+    /// @param pB Second part of the Groth16 proof
+    /// @param pC Third part of the Groth16 proof
+    /// @param publicSignals Public signals [totpCode, timeCounter, secretHash]
     /// @return bool True if proof is valid
     function verifyZKProof(
-        bytes calldata proof,
-        uint256 timestamp,
-        bytes calldata publicSignals
+        uint[2] calldata pA,
+        uint[2][2] calldata pB,
+        uint[2] calldata pC,
+        uint[3] calldata publicSignals
     ) external returns (bool) {
+        // publicSignals[2] is the secretHash - must match owner's secret
+        if (publicSignals[2] != ownerSecretHash) revert SecretHashMismatch();
+        
+        // publicSignals[1] is the timeCounter, convert to timestamp
+        uint256 timestamp = publicSignals[1] * 30;
         _checkTimestampFreshness(timestamp);
-        bool isValid = _verifyProof(proof, timestamp, publicSignals);
+        
+        bool isValid = _verifier.verifyProof(pA, pB, pC, publicSignals);
         emit ZKProofVerified(timestamp, isValid);
         if (!isValid) revert InvalidProof();
         return true;
@@ -110,13 +131,20 @@ contract TOTPWallet is IAccount {
         }
     }
 
-    /// @notice Transfer ownership of the wallet to a new address
-    /// @param newOwner The address of the new owner (cannot be zero address)
+    /// @notice Transfer ownership to a new address
+    /// @param newOwner The address of the new owner
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Invalid new owner");
         address previousOwner = owner;
         owner = newOwner;
         emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    /// @notice Update the secret hash (e.g., when rotating TOTP secret)
+    /// @param newSecretHash The new secret hash
+    function updateSecretHash(uint256 newSecretHash) external onlyOwner {
+        ownerSecretHash = newSecretHash;
+        emit SecretHashUpdated(newSecretHash);
     }
 
     /// @notice Validate user operation for ERC-4337 (called by EntryPoint)
@@ -176,20 +204,6 @@ contract TOTPWallet is IAccount {
         uint256 currentTime = block.timestamp;
         if (timestamp > currentTime) revert TimestampInFuture();
         if (currentTime - timestamp > MAX_TIME_DIFFERENCE) revert TimestampTooOld();
-    }
-
-    /// @dev Internal ZK proof verification (simplified for development)
-    /// @dev In production, this would call a ZK verifier contract (e.g., Groth16)
-    /// @param proof The ZK proof bytes (must not be empty)
-    /// @param publicSignals Public signals from the ZK proof (must not be empty)
-    /// @return bool True if proof structure is valid
-    function _verifyProof(
-        bytes calldata proof,
-        uint256 /* timestamp */,
-        bytes calldata publicSignals
-    ) internal pure returns (bool) {
-        if (proof.length == 0 || publicSignals.length == 0) return false;
-        return true;
     }
 
     /// @dev Validate the signature of a user operation against the owner
