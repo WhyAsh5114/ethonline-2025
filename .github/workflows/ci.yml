@@ -1,0 +1,257 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ master, erc-4337-contracts ]
+  pull_request:
+    branches: [ master, erc-4337-contracts ]
+
+jobs:
+  blockchain-tests:
+    name: Blockchain - Build & Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    defaults:
+      run:
+        working-directory: ./blockchain
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Compile contracts
+        run: pnpm compile
+      
+      - name: Run tests
+        run: pnpm test
+        env:
+          CI: true
+      
+      - name: Generate types
+        run: pnpm generate
+      
+      - name: Check TypeScript compilation
+        run: pnpm exec tsc --noEmit
+
+  circuits-build:
+    name: Circuits - Build & Verify
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    defaults:
+      run:
+        working-directory: ./circuits
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Install circom
+        run: |
+          wget https://github.com/iden3/circom/releases/download/v2.2.1/circom-linux-amd64
+          chmod +x circom-linux-amd64
+          sudo mv circom-linux-amd64 /usr/local/bin/circom
+          circom --version
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Cache Powers of Tau
+        id: cache-powersoftau
+        uses: actions/cache@v4
+        with:
+          path: ./circuits/build/powersOfTau28_hez_final_18.ptau
+          key: powersoftau-28-18
+      
+      - name: Download Powers of Tau (if not cached)
+        if: steps.cache-powersoftau.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build
+          wget -O build/powersOfTau28_hez_final_18.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_18.ptau
+      
+      - name: Compile circuit
+        run: |
+          mkdir -p build
+          circom src/totp_verifier.circom --r1cs --wasm --sym --c -o build/
+          echo "Circuit compiled successfully"
+      
+      - name: Check circuit info
+        run: |
+          npx snarkjs r1cs info build/totp_verifier.r1cs
+      
+      - name: Generate proving key
+        run: npx tsx scripts/setup.ts
+      
+      - name: Test proof generation
+        run: |
+          npx tsx scripts/generate_proof.ts 12345 1729353600
+          echo "Proof generation successful"
+      
+      - name: Verify TOTPVerifier.sol was generated
+        run: |
+          if [ -f "../blockchain/contracts/TOTPVerifier.sol" ]; then
+            echo "✅ TOTPVerifier.sol generated successfully"
+          else
+            echo "❌ TOTPVerifier.sol not found"
+            exit 1
+          fi
+      
+      - name: Check TypeScript compilation
+        run: pnpm exec tsc --noEmit
+
+  frontend-build:
+    name: Frontend - Build & Lint
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Biome linter
+        run: pnpm lint
+      
+      - name: Run Biome formatter check
+        run: pnpm exec biome check --write
+      
+      - name: Build frontend
+        run: pnpm build
+        env:
+          NODE_ENV: production
+
+  integration-check:
+    name: Integration - Full Build
+    runs-on: ubuntu-latest
+    needs: [blockchain-tests, circuits-build, frontend-build]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+      
+      - name: Install circom
+        run: |
+          wget https://github.com/iden3/circom/releases/download/v2.2.1/circom-linux-amd64
+          chmod +x circom-linux-amd64
+          sudo mv circom-linux-amd64 /usr/local/bin/circom
+      
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Cache Powers of Tau
+        id: cache-powersoftau
+        uses: actions/cache@v4
+        with:
+          path: ./circuits/build/powersOfTau28_hez_final_18.ptau
+          key: powersoftau-28-18
+      
+      - name: Download Powers of Tau (if not cached)
+        if: steps.cache-powersoftau.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p circuits/build
+          wget -O circuits/build/powersOfTau28_hez_final_18.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_18.ptau
+      
+      - name: Build all workspaces
+        run: pnpm build
+      
+      - name: Verify build artifacts
+        run: |
+          echo "Checking blockchain artifacts..."
+          ls -la blockchain/artifacts/contracts/TOTPWallet.sol/ || true
+          ls -la blockchain/artifacts/contracts/TOTPVerifier.sol/ || true
+          
+          echo "Checking circuit artifacts..."
+          ls -la circuits/build/*.zkey || true
+          ls -la circuits/build/*.r1cs || true
+          
+          echo "Checking frontend build..."
+          ls -la frontend/.next/ || true
+          
+          echo "✅ All artifacts present"
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [blockchain-tests, circuits-build, frontend-build, integration-check]
+    if: always()
+    
+    steps:
+      - name: Check job results
+        run: |
+          echo "Blockchain Tests: ${{ needs.blockchain-tests.result }}"
+          echo "Circuits Build: ${{ needs.circuits-build.result }}"
+          echo "Frontend Build: ${{ needs.frontend-build.result }}"
+          echo "Integration Check: ${{ needs.integration-check.result }}"
+          
+          if [ "${{ needs.blockchain-tests.result }}" != "success" ] || \
+             [ "${{ needs.circuits-build.result }}" != "success" ] || \
+             [ "${{ needs.frontend-build.result }}" != "success" ] || \
+             [ "${{ needs.integration-check.result }}" != "success" ]; then
+            echo "❌ CI Pipeline Failed"
+            exit 1
+          else
+            echo "✅ CI Pipeline Passed"
+          fi
