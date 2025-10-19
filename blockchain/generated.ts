@@ -1,56 +1,4 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Counter
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
-
-*/
-export const counterAbi = [
-  {
-    type: 'event',
-    anonymous: false,
-    inputs: [
-      { name: 'by', internalType: 'uint256', type: 'uint256', indexed: false },
-    ],
-    name: 'Increment',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'inc',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'by', internalType: 'uint256', type: 'uint256' }],
-    name: 'incBy',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'x',
-    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const
-
-/**
-
-*/
-export const counterAddress = {} as const
-
-/**
-
-*/
-export const counterConfig = {
-  address: counterAddress,
-  abi: counterAbi,
-} as const
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // MockEntryPoint
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -172,6 +120,25 @@ export const simpleContractAbi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TOTPVerifier
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const totpVerifierAbi = [
+  {
+    type: 'function',
+    inputs: [
+      { name: '_pA', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: '_pB', internalType: 'uint256[2][2]', type: 'uint256[2][2]' },
+      { name: '_pC', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: '_pubSignals', internalType: 'uint256[3]', type: 'uint256[3]' },
+    ],
+    name: 'verifyProof',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'view',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TOTPWallet
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -184,7 +151,13 @@ export const totpWalletAbi = [
         internalType: 'contract IEntryPoint',
         type: 'address',
       },
+      {
+        name: 'verifier',
+        internalType: 'contract TOTPVerifier',
+        type: 'address',
+      },
       { name: 'anOwner', internalType: 'address', type: 'address' },
+      { name: 'initialSecretHash', internalType: 'uint256', type: 'uint256' },
     ],
     stateMutability: 'nonpayable',
   },
@@ -203,6 +176,7 @@ export const totpWalletAbi = [
   { type: 'error', inputs: [], name: 'InvalidSignature' },
   { type: 'error', inputs: [], name: 'OnlyEntryPoint' },
   { type: 'error', inputs: [], name: 'OnlyOwner' },
+  { type: 'error', inputs: [], name: 'SecretHashMismatch' },
   { type: 'error', inputs: [], name: 'TimestampInFuture' },
   { type: 'error', inputs: [], name: 'TimestampTooOld' },
   { type: 'error', inputs: [], name: 'TransactionFailed' },
@@ -224,6 +198,19 @@ export const totpWalletAbi = [
       },
     ],
     name: 'OwnershipTransferred',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'newSecretHash',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: true,
+      },
+    ],
+    name: 'SecretHashUpdated',
   },
   {
     type: 'event',
@@ -349,8 +336,24 @@ export const totpWalletAbi = [
   },
   {
     type: 'function',
+    inputs: [],
+    name: 'ownerSecretHash',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
     name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'newSecretHash', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'updateSecretHash',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -393,9 +396,10 @@ export const totpWalletAbi = [
   {
     type: 'function',
     inputs: [
-      { name: 'proof', internalType: 'bytes', type: 'bytes' },
-      { name: 'timestamp', internalType: 'uint256', type: 'uint256' },
-      { name: 'publicSignals', internalType: 'bytes', type: 'bytes' },
+      { name: 'pA', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: 'pB', internalType: 'uint256[2][2]', type: 'uint256[2][2]' },
+      { name: 'pC', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: 'publicSignals', internalType: 'uint256[3]', type: 'uint256[3]' },
     ],
     name: 'verifyZKProof',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
