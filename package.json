@@ -1,7 +1,7 @@
 {
-  "name": "ethonline-2025",
+  "name": "chronovault",
   "version": "1.0.0",
-  "description": "",
+  "description": "Web3 wallet with TOTP 2FA and zero-knowledge proofs",
   "main": "index.js",
   "scripts": {
     "build": "pnpm --filter blockchain build && pnpm --filter frontend build",

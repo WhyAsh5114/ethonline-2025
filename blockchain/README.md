@@ -1,6 +1,6 @@
 # Blockchain Package
 
-This package contains the Hardhat smart contracts and TypeScript type generation for the ethonline-2025 monorepo.
+This package contains the Hardhat smart contracts and TypeScript type generation for the ChronoVault monorepo.
 
 ## Setup
 
