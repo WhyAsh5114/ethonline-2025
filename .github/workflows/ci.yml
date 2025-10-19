@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ master, erc-4337-contracts ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, erc-4337-contracts ]
+    branches: [ master ]
 
 jobs:
   blockchain-tests:
@@ -13,7 +13,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [22.x]
     
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [22.x]
     
     defaults:
       run:
@@ -137,7 +137,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [22.x]
     
     defaults:
       run:
@@ -189,7 +189,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
           cache: 'pnpm'
       
       - name: Install circom
