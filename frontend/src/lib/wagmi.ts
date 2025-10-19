@@ -1,5 +1,5 @@
-import { http, createConfig } from 'wagmi'
-import { hardhat, sepolia } from 'wagmi/chains'
+import { createConfig, http } from "wagmi";
+import { hardhat, sepolia } from "wagmi/chains";
 
 export const config = createConfig({
   chains: [hardhat, sepolia],
@@ -7,10 +7,10 @@ export const config = createConfig({
     [hardhat.id]: http(),
     [sepolia.id]: http(),
   },
-})
+});
 
-declare module 'wagmi' {
+declare module "wagmi" {
   interface Register {
-    config: typeof config
+    config: typeof config;
   }
 }
