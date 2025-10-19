@@ -10,8 +10,10 @@
     "test": "hardhat test"
   },
   "devDependencies": {
+    "@account-abstraction/contracts": "^0.8.0",
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+    "@openzeppelin/contracts": "^5.4.0",
     "@types/node": "^22.18.11",
     "@wagmi/cli": "^2.7.0",
     "abitype": "^1.1.1",
