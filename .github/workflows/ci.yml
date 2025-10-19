@@ -104,7 +104,7 @@ jobs:
       - name: Compile circuit
         run: |
           mkdir -p build
-          circom src/totp_verifier.circom --r1cs --wasm --sym --c -o build/
+          circom src/totp_verifier.circom --r1cs --wasm --sym -o build/
           echo "Circuit compiled successfully"
       
       - name: Check circuit info
