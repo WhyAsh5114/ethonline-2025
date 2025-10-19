@@ -25,6 +25,10 @@ Built on ERC-4337 account abstraction, ChronoVault requires users to prove posse
 3. **Replay Attack Prevention**: Timestamp-based validation ensures each proof can only be used once
 4. **Privacy-First**: TOTP secrets never leave the user's device or touch the blockchain
 
+### What Makes This Different
+
+Unlike existing TOTP wallet solutions that pre-compute and hash future codes into Merkle trees, ChronoVault implements the actual TOTP algorithm (RFC 6238) inside zero-knowledge circuits. This eliminates the need for client-side storage of authentication data, removes the vulnerability of brute-forcing pre-hashed values if the client is compromised, and provides true cryptographic proof of secret knowledge rather than just Merkle inclusion proofs. Our approach combines the usability of standard Google Authenticator with genuine zero-knowledge security guarantees.
+
 ## Features
 
 - **TOTP-Based 2FA**: Authy-like time-based one-time password authentication for every transaction
