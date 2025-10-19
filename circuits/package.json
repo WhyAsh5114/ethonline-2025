@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "compile": "circom src/totp_verifier.circom --r1cs --wasm --sym --c -o build/",
+    "compile": "circom src/totp_verifier.circom --r1cs --wasm --sym --c -o build/ -l node_modules",
     "setup": "tsx scripts/setup.ts",
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "gen-proof": "tsx scripts/generate_proof.ts",
     "build": "tsc"
   },
   "devDependencies": {
+    "@types/circomlibjs": "^0.1.6",
     "@types/node": "^22.18.11",
+    "@types/snarkjs": "^0.7.9",
+    "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.7",
     "snarkjs": "^0.7.5",
     "tsx": "^4.19.2",
