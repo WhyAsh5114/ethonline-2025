@@ -1,5 +1,22 @@
 "use client";
 
+import {
+  ArrowRight,
+  CheckCircle2,
+  CircuitBoard,
+  Clock,
+  Code2,
+  FileKey2,
+  Github,
+  Key,
+  Layers,
+  Lock,
+  Shield,
+  Smartphone,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,24 +26,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Shield,
-  Lock,
-  Key,
-  Zap,
-  CheckCircle2,
-  Github,
-  ArrowRight,
-  Code2,
-  Layers,
-  Clock,
-  Smartphone,
-  CircuitBoard,
-  FileKey2,
-  Wallet,
-  Server,
-} from "lucide-react";
-import Link from "next/link";
 
 export default function Home() {
   return (

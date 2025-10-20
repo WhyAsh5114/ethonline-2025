@@ -1,13 +1,13 @@
 "use client";
 
-import * as React from "react";
-import { Shield } from "lucide-react";
 import {
   IconChartBar,
   IconFolder,
   IconListDetails,
   IconUsers,
 } from "@tabler/icons-react";
+import { Shield } from "lucide-react";
+import type * as React from "react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import {
