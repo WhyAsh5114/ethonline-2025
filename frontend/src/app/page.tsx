@@ -59,7 +59,7 @@ export default function Home() {
               <Github className="h-5 w-5" />
             </Link>
             <Button asChild>
-              <Link href="/dashboard">Launch App</Link>
+              <Link href="/onboarding">Launch App</Link>
             </Button>
           </nav>
         </div>
@@ -72,18 +72,18 @@ export default function Home() {
               <Zap className="h-4 w-4 text-primary" />
               Built for ETHOnline 2025
             </div>
-            <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground md:text-7xl">
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground md:text-6xl">
               Bank-Grade Security
               <span className="block text-primary">Meets Web3</span>
             </h1>
-            <p className="mb-8 text-lg text-muted-foreground md:text-xl">
+            <p className="mb-8 text- text-muted-foreground">
               A self-custody wallet with TOTP two-factor authentication and
               zero-knowledge proofs. Transaction-level 2FA without compromising
               privacy or decentralization.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" asChild>
-                <Link href="/dashboard">
+                <Link href="/onboarding">
                   Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
