@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  IconChartBar,
-  IconFolder,
-  IconListDetails,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconKey, IconLayoutDashboard } from "@tabler/icons-react";
 import { Shield } from "lucide-react";
 import type * as React from "react";
 import { NavMain } from "@/components/nav-main";
@@ -28,24 +23,14 @@ const data = {
   },
   navMain: [
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: IconLayoutDashboard,
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
+      title: "Authenticator",
+      url: "/authenticator",
+      icon: IconKey,
     },
   ],
 };
