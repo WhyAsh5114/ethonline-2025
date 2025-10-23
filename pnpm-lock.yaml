@@ -40,6 +40,9 @@ importers:
       circomlibjs:
         specifier: ^0.1.7
         version: 0.1.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       forge-std:
         specifier: github:foundry-rs/forge-std#v1.9.4
         version: https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262
@@ -2425,6 +2428,10 @@ packages:
 
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+    engines: {node: '>=12'}
+
+  dotenv@17.2.3:
+    resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -7048,6 +7055,8 @@ snapshots:
   dotenv-expand@10.0.0: {}
 
   dotenv@16.6.1: {}
+
+  dotenv@17.2.3: {}
 
   dunder-proto@1.0.1:
     dependencies:
