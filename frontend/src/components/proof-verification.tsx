@@ -105,11 +105,27 @@ export function ProofVerification({
       }
     } catch (error) {
       console.error("Failed to verify proof on-chain:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to verify proof on-chain",
-      );
+
+      // Check for specific contract errors
+      let errorMessage = "Failed to verify proof on-chain";
+      if (error instanceof Error) {
+        if (error.message.includes("TimeCounterAlreadyUsed")) {
+          errorMessage =
+            "This time window has already been used. Please wait for the next TOTP code.";
+        } else if (error.message.includes("TimestampTooOld")) {
+          errorMessage =
+            "TOTP code expired. Please generate a new proof with the current code.";
+        } else if (error.message.includes("TimestampInFuture")) {
+          errorMessage = "Clock skew detected. Please check your device time.";
+        } else if (error.message.includes("SecretHashMismatch")) {
+          errorMessage =
+            "Secret mismatch. This proof is not valid for this wallet.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast.error(errorMessage);
       setVerificationStatus("failed");
     }
   };
@@ -179,16 +195,30 @@ export function ProofVerification({
           <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <p className="text-sm font-medium">Proof Generated</p>
+              <p className="text-sm font-medium">
+                Zero-Knowledge Proof Generated
+              </p>
             </div>
             <div className="space-y-2 text-xs">
               <div>
-                <p className="text-muted-foreground">Public Signals:</p>
+                <p className="text-muted-foreground mb-2">
+                  Public Signals (visible on-chain):
+                </p>
                 <div className="mt-1 space-y-1 font-mono">
                   <p>TOTP Code: {proof.publicSignals[0]}</p>
                   <p>Time Counter: {proof.publicSignals[1]}</p>
-                  <p>Secret Hash: {proof.publicSignals[2]}</p>
+                  <p className="break-all">
+                    Secret Hash: {proof.publicSignals[2]}
+                  </p>
                 </div>
+              </div>
+              <div className="mt-3 rounded border border-primary/20 bg-primary/5 p-2">
+                <p className="text-muted-foreground">
+                  <strong className="text-foreground">🔒 Security:</strong>{" "}
+                  While the TOTP code is public, only YOU can generate a valid
+                  proof because only you know the secret that hashes to{" "}
+                  {proof.publicSignals[2].toString().slice(0, 8)}...
+                </p>
               </div>
             </div>
           </div>
