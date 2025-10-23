@@ -34,6 +34,10 @@ contract TOTPWallet is IAccount {
     
     /// @notice Nonce for replay protection
     uint256 public nonce;
+    
+    /// @notice Last used time counter to prevent replay attacks
+    /// @dev Ensures each time window can only be used once
+    uint256 public lastUsedTimeCounter;
 
     event WalletInitialized(address indexed entryPoint, address indexed owner);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -49,6 +53,7 @@ contract TOTPWallet is IAccount {
     error TimestampInFuture();
     error TransactionFailed();
     error InvalidSignature();
+    error TimeCounterAlreadyUsed();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert OnlyOwner();
@@ -88,13 +93,23 @@ contract TOTPWallet is IAccount {
         // publicSignals[2] is the secretHash - must match owner's secret
         if (publicSignals[2] != ownerSecretHash) revert SecretHashMismatch();
         
-        // publicSignals[1] is the timeCounter, convert to timestamp
-        uint256 timestamp = publicSignals[1] * 30;
+        // publicSignals[1] is the timeCounter
+        uint256 timeCounter = publicSignals[1];
+        uint256 timestamp = timeCounter * 30;
         _checkTimestampFreshness(timestamp);
         
+        // Prevent replay: each time window can only be used once
+        // timeCounter must be greater than the last used one
+        if (timeCounter <= lastUsedTimeCounter) revert TimeCounterAlreadyUsed();
+        
+        // Verify the cryptographic proof
         bool isValid = _verifier.verifyProof(pA, pB, pC, publicSignals);
         emit ZKProofVerified(timestamp, isValid);
         if (!isValid) revert InvalidProof();
+        
+        // Update the last used time counter (prevents replay)
+        lastUsedTimeCounter = timeCounter;
+        
         return true;
     }
 

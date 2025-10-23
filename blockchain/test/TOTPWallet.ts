@@ -200,10 +200,41 @@ describe("TOTPWallet", function () {
       const proof1 = await generateTOTPProof(testSecret, currentTime);
       await totpWallet.write.verifyZKProof([proof1.pA, proof1.pB, proof1.pC, proof1.publicSignals]);
 
-      // Verify second proof with a past time (different 30-second window = different TOTP code)
-      const timestamp2 = currentTime - 60n; // 60 seconds earlier (different time window)
-      const proof2 = await generateTOTPProof(testSecret, timestamp2);
+      // Advance time by 60 seconds to create a different time window
+      await publicClient.transport.request({ method: "evm_increaseTime", params: [60] });
+      await publicClient.transport.request({ method: "evm_mine", params: [] });
+
+      // Get new block time
+      const block2 = await publicClient.getBlock();
+      const newTime = block2.timestamp;
+
+      // Verify second proof with new time (different 30-second window = different TOTP code)
+      const proof2 = await generateTOTPProof(testSecret, newTime);
       await totpWallet.write.verifyZKProof([proof2.pA, proof2.pB, proof2.pC, proof2.publicSignals]);
+    });
+
+    it("Should prevent replay attacks - reject reused timeCounter", async function () {
+      const mockEntryPoint = await viem.deployContract("MockEntryPoint");
+      const totpWallet = await viem.deployContract("TOTPWallet", [
+        mockEntryPoint.address,
+        verifier.address,
+        owner.account.address,
+        testSecretHash,
+      ]);
+
+      const block = await publicClient.getBlock();
+      const currentTime = block.timestamp;
+
+      // Generate and verify proof once
+      const proof = await generateTOTPProof(testSecret, currentTime);
+      await totpWallet.write.verifyZKProof([proof.pA, proof.pB, proof.pC, proof.publicSignals]);
+
+      // Attempt to replay the same proof - should fail
+      await viem.assertions.revertWithCustomError(
+        totpWallet.write.verifyZKProof([proof.pA, proof.pB, proof.pC, proof.publicSignals]),
+        totpWallet,
+        "TimeCounterAlreadyUsed",
+      );
     });
 
     it("Should reject proof with wrong secret hash", async function () {
