@@ -1,10 +1,10 @@
 "use client";
 
-import { Loader2, Wallet, CheckCircle2, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, CheckCircle2, Loader2, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { type Address, isAddress } from "viem";
 import { useAccount } from "wagmi";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +17,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTOTPWallet } from "@/hooks/use-totp-wallet";
+import {
+  DEFAULT_NETWORK,
+  getContractAddresses,
+} from "@/lib/contract-addresses";
 
 interface WalletDeploymentProps {
   secretHash: bigint | null;
@@ -27,16 +31,37 @@ export function WalletDeployment({
   secretHash,
   onDeployed,
 }: WalletDeploymentProps) {
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, isConnected, chain } = useAccount();
   const { deployWallet, isDeploying } = useTOTPWallet();
 
   const [entryPointAddress, setEntryPointAddress] = useState<string>("");
   const [verifierAddress, setVerifierAddress] = useState<string>("");
   const [deployedWallet, setDeployedWallet] = useState<Address | null>(null);
 
+  // Load default addresses on mount
+  useEffect(() => {
+    const addresses = getContractAddresses(DEFAULT_NETWORK);
+    if (addresses.entryPoint) {
+      setEntryPointAddress(addresses.entryPoint);
+    }
+    if (addresses.verifier) {
+      setVerifierAddress(addresses.verifier);
+    }
+  }, []);
+
   const handleDeploy = async () => {
-    if (!userAddress) {
+    if (!isConnected || !userAddress) {
       toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (!chain) {
+      toast.error("Please ensure your wallet is connected to a network");
+      return;
+    }
+
+    if (chain.id !== 11155111 && chain.id !== 31337) {
+      toast.error("Please switch to Sepolia testnet or Hardhat network");
       return;
     }
 
@@ -130,7 +155,37 @@ export function WalletDeployment({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!secretHash && (
+        {!isConnected && (
+          <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">
+                Wallet Not Connected
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Please connect your wallet to deploy a TOTP wallet.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isConnected &&
+          chain &&
+          chain.id !== 11155111 &&
+          chain.id !== 31337 && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+              <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+              <div className="flex-1 text-sm">
+                <p className="font-medium text-foreground">Wrong Network</p>
+                <p className="mt-1 text-muted-foreground">
+                  Please switch to Sepolia testnet (Chain ID: 11155111) to
+                  deploy.
+                </p>
+              </div>
+            </div>
+          )}
+
+        {!secretHash && isConnected && (
           <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div className="flex-1 text-sm">

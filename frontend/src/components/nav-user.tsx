@@ -54,7 +54,7 @@ export function NavUser() {
   const handleDisconnect = () => {
     disconnect();
     sessionStorage.removeItem("totp_configured");
-    router.push("/onboarding");
+    router.push("/dashboard");
   };
 
   if (!address) {

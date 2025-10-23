@@ -36,7 +36,8 @@ export function WalletConnect() {
     setSelectedConnector(connectorId);
     const connector = connectors.find((c) => c.id === connectorId);
     if (connector) {
-      connect({ connector });
+      // Connect with Sepolia as the default chain (chainId: 11155111)
+      connect({ connector, chainId: 11155111 });
     }
   };
 

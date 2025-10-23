@@ -1,9 +1,9 @@
 "use client";
 
-import { Send, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
 import { useState } from "react";
-import { type Address, parseEther, isAddress } from "viem";
 import { toast } from "sonner";
+import { type Address, isAddress, parseEther } from "viem";
 import { Button } from "@/components/ui/button";
 import {
   Card,
