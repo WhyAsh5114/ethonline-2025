@@ -365,7 +365,24 @@ Attacker tries to use it:
 ❌ Contract rejects: "SecretHashMismatch!"
 ```
 
-### Attack Scenario 2: "I'll try to crack the secret from the hash!"
+### Attack Scenario 2: "I'll intercept and replay the proof immediately!"
+
+```
+Attacker intercepts proof in real-time:
+- TOTP code: 586413
+- Time counter: 57645120
+- Proof: (pA, pB, pC)
+
+User submits first → Contract marks timeCounter 57645120 as USED
+Attacker tries to replay → Contract checks:
+  if (57645120 <= lastUsedTimeCounter) revert TimeCounterAlreadyUsed();
+❌ Contract rejects: "TimeCounterAlreadyUsed!"
+❌ Proof is ONE-TIME USE - worthless after first submission!
+```
+
+**Key Protection:** The contract tracks `lastUsedTimeCounter` and only accepts strictly increasing time windows. Even within the 5-minute freshness window, each proof can only be used ONCE.
+
+### Attack Scenario 3: "I'll try to crack the secret from the hash!"
 
 ```
 Attacker has: secretHash = 42675...
@@ -379,7 +396,7 @@ Problem:
 ❌ Not feasible!
 ```
 
-### Attack Scenario 3: "I'll generate my own proof with my own secret!"
+### Attack Scenario 4: "I'll generate my own proof with my own secret!"
 
 ```
 Attacker generates proof with their secret: 99999
@@ -400,7 +417,7 @@ Contract checks:
 
 ```
 ❌ Can't send secret to blockchain (everyone sees it)
-❌ Can't send TOTP directly (can be copied)
+❌ Can't send TOTP directly (can be copied and replayed)
 ❌ Can't trust server (defeats purpose of blockchain)
 ```
 
@@ -412,6 +429,8 @@ Contract checks:
 ✅ Each wallet tied to one secret (secretHash check)
 ✅ Fully on-chain, no trusted servers
 ✅ TOTP codes can be seen but are useless without the secret
+✅ Each proof is ONE-TIME USE (replay protection via timeCounter tracking)
+✅ Time-based expiration (30-second windows + 5-minute max freshness)
 ```
 
 ---

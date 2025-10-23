@@ -256,31 +256,71 @@ await assert.rejects(
 
 ### Test 5: "Should verify multiple proofs with same secret at different time windows"
 
-**What it tests:** The same secret can generate different valid proofs for different time windows.
+**What it tests:** The same secret can generate different valid proofs for different time windows (with strictly increasing timeCounters).
 
 **Setup:**
 1. Deploy wallet
 2. Generate proof #1 with current time
 3. Verify proof #1 ✅
-4. Generate proof #2 with time 60 seconds earlier (different 30-second window)
-5. Verify proof #2 ✅
+4. Advance blockchain time by 60 seconds
+5. Generate proof #2 with new current time (later time window)
+6. Verify proof #2 ✅
 
 **Process:**
 ```typescript
 const proof1 = await generateTOTPProof(testSecret, currentTime);
 await totpWallet.write.verifyZKProof([proof1.pA, proof1.pB, proof1.pC, proof1.publicSignals]);
 
-const timestamp2 = currentTime - 60n; // Different time window
-const proof2 = await generateTOTPProof(testSecret, timestamp2);
+// Advance time to create a new time window
+await publicClient.transport.request({ method: "evm_increaseTime", params: [60] });
+await publicClient.transport.request({ method: "evm_mine", params: [] });
+
+const block2 = await publicClient.getBlock();
+const newTime = block2.timestamp;
+const proof2 = await generateTOTPProof(testSecret, newTime);
 await totpWallet.write.verifyZKProof([proof2.pA, proof2.pB, proof2.pC, proof2.publicSignals]);
 ```
 
-**Expected result:** Both proofs verify successfully.
+**Expected result:** Both proofs verify successfully because the second has a larger timeCounter.
 
 **Why important:** 
 - Shows TOTP codes change over time
 - Same secret produces different proofs at different times
-- Proofs within the 5-minute window are all valid
+- **NEW:** Enforces monotonic progression - must use later time windows
+- Prevents replaying old proofs
+
+---
+
+### Test 5.1: "Should prevent replay attacks - reject reused timeCounter" **[NEW]**
+
+**What it tests:** Once a timeCounter is used, it cannot be used again (immediate replay protection).
+
+**Setup:**
+1. Deploy wallet
+2. Generate proof with current time
+3. Verify proof ✅ (marks timeCounter as used)
+4. Attempt to verify the SAME proof again
+
+**Process:**
+```typescript
+const proof = await generateTOTPProof(testSecret, currentTime);
+await totpWallet.write.verifyZKProof([proof.pA, proof.pB, proof.pC, proof.publicSignals]); // First use - OK
+
+// Try to replay the exact same proof
+await viem.assertions.revertWithCustomError(
+  totpWallet.write.verifyZKProof([proof.pA, proof.pB, proof.pC, proof.publicSignals]),
+  totpWallet,
+  "TimeCounterAlreadyUsed"
+);
+```
+
+**Expected result:** Second verification reverts with `TimeCounterAlreadyUsed` error.
+
+**Why important:** 
+- **Critical security feature:** Prevents replay attacks even within the 5-minute freshness window
+- Makes each proof ONE-TIME USE
+- Protects against bots that intercept and immediately replay proofs
+- Contract tracks `lastUsedTimeCounter` and only accepts strictly increasing values
 
 ---
 

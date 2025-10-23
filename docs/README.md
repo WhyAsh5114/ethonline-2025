@@ -27,13 +27,13 @@ A comprehensive, step-by-step explanation of how the ZK-TOTP smart contract wall
 ### 2. [TEST_DOCUMENTATION.md](TEST_DOCUMENTATION.md)
 **Complete Test Suite Guide**
 
-Detailed documentation for all 35 tests in the TOTPWallet contract.
+Detailed documentation for all 36 tests in the TOTPWallet contract.
 
 **Topics covered:**
 - Test setup & infrastructure
-- 35 tests organized by category:
+- 36 tests organized by category:
   - Deployment (4)
-  - ZK Proof Verification (7)
+  - ZK Proof Verification (8) - **includes NEW replay protection test**
   - Timestamp Freshness (4)
   - Transaction Execution (4)
   - Batch Execution (4)

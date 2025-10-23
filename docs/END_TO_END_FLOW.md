@@ -215,11 +215,27 @@ This will:
 - **Base32 secret**: Stored in session storage during session
 - **Secret hash**: Stored on-chain (public, but doesn't reveal secret)
 
-### Proof Freshness
+### Proof Freshness & Replay Protection
 
+**Time Window Validation:**
 - Timestamps must be within 5 minutes of current time
-- Prevents replay attacks with old proofs
-- Enforced by smart contract
+- Prevents use of very old or future-dated proofs
+- Enforced by smart contract `_checkTimestampFreshness()`
+
+**One-Time Use Protection:**
+- Each `timeCounter` (30-second window) can only be used ONCE
+- Smart contract tracks `lastUsedTimeCounter` 
+- New proofs must have strictly increasing timeCounters
+- **Critical:** Even if a proof is intercepted, it becomes immediately useless after first use
+- Prevents replay attacks within the 5-minute freshness window
+
+**How It Works:**
+```solidity
+// Contract checks:
+if (timeCounter <= lastUsedTimeCounter) revert TimeCounterAlreadyUsed();
+// ... verify proof ...
+lastUsedTimeCounter = timeCounter; // Mark as used
+```
 
 ### Zero-Knowledge Property
 

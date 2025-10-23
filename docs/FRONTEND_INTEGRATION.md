@@ -184,7 +184,11 @@ These are loaded on-demand when generating proofs.
 1. **Secret Storage**: TOTP secrets stored in session storage (cleared on browser close)
 2. **ZK Properties**: Secret never leaves the browser or blockchain
 3. **Proof Freshness**: Timestamps verified on-chain (5-minute window)
-4. **Nonce Protection**: Wallet contract includes replay protection
+4. **Replay Protection**: Each timeCounter can only be used once (immediate expiration)
+   - Contract tracks `lastUsedTimeCounter`
+   - Only accepts strictly increasing time windows
+   - Prevents proof reuse even within freshness window
+5. **Nonce Protection**: Wallet contract includes transaction nonce for additional safety
 
 ## Smart Contract Integration
 
