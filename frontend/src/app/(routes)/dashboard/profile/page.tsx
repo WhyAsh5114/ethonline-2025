@@ -18,7 +18,7 @@ import {
   type ProfileData,
 } from "@/lib/profile-storage";
 
-export default function DashboardPage() {
+export default function ProfilePage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Profile</h1>
         <p className="mt-2 text-muted-foreground">
           Manage your ChronoVault setup and navigate to different actions
         </p>
