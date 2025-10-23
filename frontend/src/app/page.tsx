@@ -59,7 +59,7 @@ export default function Home() {
               <Github className="h-5 w-5" />
             </Link>
             <Button asChild>
-              <Link href="/onboarding">Launch App</Link>
+              <Link href="/dashboard">Launch App</Link>
             </Button>
           </nav>
         </div>
@@ -83,7 +83,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" asChild>
-                <Link href="/onboarding">
+                <Link href="/dashboard">
                   Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
