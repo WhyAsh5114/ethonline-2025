@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { type Address } from "viem";
+import type { Address } from "viem";
 import { useAccount } from "wagmi";
-import { TOTPSetup } from "@/components/totp-setup";
-import { WalletDeployment } from "@/components/wallet-deployment";
 import { ProofVerification } from "@/components/proof-verification";
+import { TOTPSetup } from "@/components/totp-setup";
 import { TransactionExecution } from "@/components/transaction-execution";
-import { WalletConnect } from "@/components/wallet-connect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WalletConnect } from "@/components/wallet-connect";
+import { WalletDeployment } from "@/components/wallet-deployment";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();

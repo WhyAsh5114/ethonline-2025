@@ -1,8 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -13,17 +11,14 @@ export default function RoutesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isConnected, isConnecting } = useAccount();
-  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    const totpConfigured = sessionStorage.getItem("totp_configured");
-    if (!isConnecting && (!isConnected || totpConfigured !== "true")) {
-      router.push("/onboarding");
-    }
-  }, [isConnected, isConnecting, router]);
+    setIsMounted(true);
+  }, []);
 
-  if (isConnecting || !isConnected) {
+  // Show loading state during SSR and initial hydration
+  if (!isMounted) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="space-y-4">
