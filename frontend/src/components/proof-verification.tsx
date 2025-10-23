@@ -1,9 +1,9 @@
 "use client";
 
-import { Shield, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Shield } from "lucide-react";
 import { useState } from "react";
-import { type Address } from "viem";
 import { toast } from "sonner";
+import type { Address } from "viem";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,12 +15,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useZKProof } from "@/hooks/use-zk-proof";
 import { useTOTPWallet } from "@/hooks/use-totp-wallet";
-import { generateTOTPCode } from "@/lib/totp";
+import { useZKProof } from "@/hooks/use-zk-proof";
 
 interface ProofVerificationProps {
-  totpSecret: string | null;
+  totpSecret: string | null; // Numeric secret for ZK proof
   walletAddress: Address | null;
 }
 
@@ -42,17 +41,6 @@ export function ProofVerification({
     "idle" | "local-verified" | "onchain-verified" | "failed"
   >("idle");
 
-  const handleGenerateCode = () => {
-    if (!totpSecret) {
-      toast.error("TOTP secret not available");
-      return;
-    }
-
-    const code = generateTOTPCode(totpSecret);
-    setTotpCode(code);
-    toast.success("TOTP code generated");
-  };
-
   const handleGenerateProof = async () => {
     if (!totpSecret) {
       toast.error("TOTP secret not available");
@@ -66,7 +54,10 @@ export function ProofVerification({
 
     try {
       const timestamp = Math.floor(Date.now() / 1000);
+
+      // Use the manually entered TOTP code for proof generation
       await generateProof(totpSecret, totpCode, timestamp);
+
       toast.success("ZK proof generated successfully");
       setVerificationStatus("idle");
     } catch (error) {
@@ -166,29 +157,21 @@ export function ProofVerification({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="totp-code">TOTP Code</Label>
-          <div className="flex gap-2">
-            <Input
-              id="totp-code"
-              placeholder="000000"
-              value={totpCode}
-              onChange={(e) =>
-                setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              disabled={!totpSecret || isGenerating}
-              maxLength={6}
-              className="font-mono text-lg"
-            />
-            <Button
-              onClick={handleGenerateCode}
-              disabled={!totpSecret || isGenerating}
-              variant="outline"
-            >
-              Generate
-            </Button>
-          </div>
+          <Label htmlFor="totp-code">Enter TOTP Code from Authenticator</Label>
+          <Input
+            id="totp-code"
+            placeholder="000000"
+            value={totpCode}
+            onChange={(e) =>
+              setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            disabled={!totpSecret || isGenerating}
+            maxLength={6}
+            className="font-mono text-lg"
+          />
           <p className="text-xs text-muted-foreground">
-            Enter your 6-digit TOTP code or generate one
+            Enter the 6-digit code from your ChronoVault Authenticator app. The
+            code changes every 30 seconds.
           </p>
         </div>
 
