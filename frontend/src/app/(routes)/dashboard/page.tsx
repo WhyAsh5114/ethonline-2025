@@ -27,20 +27,23 @@ export default function DashboardPage() {
 
   if (!isConnected) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to ChronoVault</h1>
-          <p className="mt-2 text-muted-foreground">
-            Connect your wallet to get started with TOTP-protected smart wallet
-          </p>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="mx-auto w-full max-w-md space-y-6 text-center">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome to ChronoVault</h1>
+            <p className="mt-2 text-muted-foreground">
+              Connect your wallet to get started with TOTP-protected smart
+              wallet
+            </p>
+          </div>
+          <WalletConnect />
         </div>
-        <WalletConnect />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="mt-2 text-muted-foreground">
@@ -48,8 +51,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="setup" className="flex-1">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="setup" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           <TabsTrigger value="setup">TOTP Setup</TabsTrigger>
           <TabsTrigger value="deploy" disabled={!secretHash}>
             Deploy Wallet
@@ -86,7 +89,7 @@ export default function DashboardPage() {
       </Tabs>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">TOTP Status</p>
           <p className="mt-1 font-semibold">
@@ -99,9 +102,9 @@ export default function DashboardPage() {
             {walletAddress ? "✓ Deployed" : "Not Deployed"}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
           <p className="text-sm text-muted-foreground">Connected Address</p>
-          <p className="mt-1 font-mono text-xs">
+          <p className="mt-1 font-mono text-xs break-all">
             {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "—"}
           </p>
         </div>

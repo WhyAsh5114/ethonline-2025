@@ -196,8 +196,8 @@ export default function AuthenticatorPage() {
   };
 
   return (
-    <div className="container max-w-2xl py-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">ChronoVault Authenticator</h1>
           <p className="mt-2 text-muted-foreground">
@@ -223,7 +223,7 @@ export default function AuthenticatorPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {accounts.length} {accounts.length === 1 ? "account" : "accounts"}
         </div>
@@ -252,10 +252,10 @@ export default function AuthenticatorPage() {
         {accounts.map((account) => (
           <Card key={account.id} data-slot="authenticator-account">
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1 min-w-0">
                   <CardTitle className="text-lg">{account.name}</CardTitle>
-                  <CardDescription className="font-mono text-xs">
+                  <CardDescription className="font-mono text-xs break-all">
                     {account.address.slice(0, 10)}...{account.address.slice(-8)}
                   </CardDescription>
                 </div>
@@ -263,6 +263,7 @@ export default function AuthenticatorPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleDeleteAccount(account.id, account.name)}
+                  className="self-end sm:self-start"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -272,12 +273,12 @@ export default function AuthenticatorPage() {
               <div className="flex items-center justify-between">
                 <button
                   type="button"
-                  className="flex-1 cursor-pointer select-none border-none bg-transparent p-0"
+                  className="flex-1 cursor-pointer select-none border-none bg-transparent p-0 text-center"
                   onClick={() =>
                     handleCopyCode(account.id, codes[account.id] || "------")
                   }
                 >
-                  <div className="text-4xl font-bold font-mono tracking-[0.5em] text-center">
+                  <div className="text-3xl sm:text-4xl font-bold font-mono tracking-[0.3em] sm:tracking-[0.5em]">
                     {codes[account.id] || "------"}
                   </div>
                 </button>
