@@ -52,22 +52,40 @@ export function TOTPSetup({ onComplete }: TOTPSetupProps) {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!totpSecret || !verificationCode) return;
 
     setIsVerifying(true);
-    setTimeout(() => {
-      const isValid = verifyTOTPCode(totpSecret.secret, verificationCode);
 
-      if (isValid) {
-        setIsVerified(true);
-        toast.success("TOTP verified successfully");
-        onComplete?.(totpSecret.secret, totpSecret.secretHash);
-      } else {
-        toast.error("Invalid code. Please try again.");
-      }
+    try {
+      setTimeout(async () => {
+        try {
+          const isValid = await verifyTOTPCode(
+            totpSecret.secret,
+            verificationCode,
+          );
+
+          if (isValid) {
+            setIsVerified(true);
+            toast.success("TOTP verified successfully");
+            onComplete?.(totpSecret.secret, totpSecret.secretHash);
+          } else {
+            toast.error("Invalid code. Please try again.");
+          }
+        } catch (error) {
+          console.error("Verification error:", error);
+          toast.error(
+            `Verification failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        } finally {
+          setIsVerifying(false);
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Setup error:", error);
+      toast.error("Failed to verify TOTP code");
       setIsVerifying(false);
-    }, 500);
+    }
   };
 
   if (isGenerating) {
@@ -143,7 +161,7 @@ export function TOTPSetup({ onComplete }: TOTPSetupProps) {
           <div className="flex-1">
             <CardTitle>Set Up 2FA</CardTitle>
             <CardDescription>
-              Scan with Google Authenticator or Authy
+              Scan with ChronoVault Authenticator
             </CardDescription>
           </div>
         </div>
@@ -152,7 +170,7 @@ export function TOTPSetup({ onComplete }: TOTPSetupProps) {
         <div className="flex flex-col items-center space-y-4">
           <div className="rounded-lg border-2 border-primary/20 bg-background p-4">
             <QRCodeSVG
-              value={totpSecret.uri}
+              value={totpSecret.qrData}
               size={200}
               level="H"
               includeMargin
@@ -161,7 +179,7 @@ export function TOTPSetup({ onComplete }: TOTPSetupProps) {
 
           <div className="w-full space-y-2">
             <Label htmlFor="secret" className="text-sm font-medium">
-              Manual Entry Code
+              Manual Entry Code (20 digits)
             </Label>
             <div className="flex gap-2">
               <Input
@@ -192,6 +210,9 @@ export function TOTPSetup({ onComplete }: TOTPSetupProps) {
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Store this securely. You&apos;ll need it for the authenticator.
+            </p>
           </div>
         </div>
 

@@ -1,8 +1,111 @@
+"use client";
+
+import { useState } from "react";
+import type { Address } from "viem";
+import { useAccount } from "wagmi";
+import { ProofVerification } from "@/components/proof-verification";
+import { TOTPSetup } from "@/components/totp-setup";
+import { TransactionExecution } from "@/components/transaction-execution";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WalletConnect } from "@/components/wallet-connect";
+import { WalletDeployment } from "@/components/wallet-deployment";
+
 export default function DashboardPage() {
+  const { address, isConnected } = useAccount();
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
+  const [secretHash, setSecretHash] = useState<bigint | null>(null);
+  const [walletAddress, setWalletAddress] = useState<Address | null>(null);
+
+  const handleTOTPComplete = (secret: string, hash: bigint) => {
+    setTotpSecret(secret);
+    setSecretHash(hash);
+  };
+
+  const handleWalletDeployed = (address: Address) => {
+    setWalletAddress(address);
+  };
+
+  if (!isConnected) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Welcome to ChronoVault</h1>
+          <p className="mt-2 text-muted-foreground">
+            Connect your wallet to get started with TOTP-protected smart wallet
+          </p>
+        </div>
+        <WalletConnect />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      {/* Dashboard content goes here */}
+    <div className="flex flex-1 flex-col gap-6 p-4">
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="mt-2 text-muted-foreground">
+          Manage your TOTP-protected smart wallet
+        </p>
+      </div>
+
+      <Tabs defaultValue="setup" className="flex-1">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="setup">TOTP Setup</TabsTrigger>
+          <TabsTrigger value="deploy" disabled={!secretHash}>
+            Deploy Wallet
+          </TabsTrigger>
+          <TabsTrigger value="verify" disabled={!totpSecret}>
+            Verify Proof
+          </TabsTrigger>
+          <TabsTrigger value="execute" disabled={!walletAddress}>
+            Execute
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="setup" className="mt-6">
+          <TOTPSetup onComplete={handleTOTPComplete} />
+        </TabsContent>
+
+        <TabsContent value="deploy" className="mt-6">
+          <WalletDeployment
+            secretHash={secretHash}
+            onDeployed={handleWalletDeployed}
+          />
+        </TabsContent>
+
+        <TabsContent value="verify" className="mt-6">
+          <ProofVerification
+            totpSecret={totpSecret}
+            walletAddress={walletAddress}
+          />
+        </TabsContent>
+
+        <TabsContent value="execute" className="mt-6">
+          <TransactionExecution walletAddress={walletAddress} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Status Overview */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">TOTP Status</p>
+          <p className="mt-1 font-semibold">
+            {secretHash ? "✓ Configured" : "Not Setup"}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Wallet Status</p>
+          <p className="mt-1 font-semibold">
+            {walletAddress ? "✓ Deployed" : "Not Deployed"}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Connected Address</p>
+          <p className="mt-1 font-mono text-xs">
+            {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "—"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

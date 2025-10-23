@@ -7,10 +7,10 @@ export function useTOTPSetup() {
   const [totpSecret, setTotpSecret] = useState<TOTPSecret | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generateSecret = useCallback((accountAddress: string) => {
+  const generateSecret = useCallback(async (accountAddress: string) => {
     setIsGenerating(true);
     try {
-      const secret = generateTOTPSecret(accountAddress);
+      const secret = await generateTOTPSecret(accountAddress);
       setTotpSecret(secret);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("totp_secret", secret.secret);
@@ -18,6 +18,7 @@ export function useTOTPSetup() {
           "totp_secret_hash",
           secret.secretHash.toString(),
         );
+        sessionStorage.setItem("totp_qr_data", secret.qrData);
       }
       return secret;
     } finally {
@@ -33,17 +34,17 @@ export function useTOTPSetup() {
     }
   }, []);
 
-  const loadStoredSecret = useCallback(() => {
+  const loadStoredSecret = useCallback(async () => {
     if (typeof window !== "undefined") {
       const storedSecret = sessionStorage.getItem("totp_secret");
       const storedHash = sessionStorage.getItem("totp_secret_hash");
+      const storedQrData = sessionStorage.getItem("totp_qr_data");
 
-      if (storedSecret && storedHash) {
-        const secret = generateTOTPSecret("");
+      if (storedSecret && storedHash && storedQrData) {
         setTotpSecret({
           secret: storedSecret,
-          uri: secret.uri,
           secretHash: BigInt(storedHash),
+          qrData: storedQrData,
         });
       }
     }
