@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ZKProof, SolidityProof } from "@/lib/zk-proof";
+import type { SolidityProof, ZKProof } from "@/lib/zk-proof";
 import {
   calculateSecretHash,
   calculateTOTPCode,

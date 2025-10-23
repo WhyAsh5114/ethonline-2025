@@ -1,15 +1,15 @@
 "use client";
 
-import type { SolidityProof } from "@/lib/zk-proof";
 import { totpWalletAbi } from "blockchain/generated";
 import { useCallback, useState } from "react";
-import { type Address } from "viem";
+import type { Address } from "viem";
 import {
   useAccount,
+  useDeployContract,
   usePublicClient,
-  useWalletClient,
   useWriteContract,
 } from "wagmi";
+import type { SolidityProof } from "@/lib/zk-proof";
 
 export interface DeployWalletParams {
   entryPointAddress: Address;
@@ -34,12 +34,12 @@ export interface UseTOTPWalletResult {
   deployWallet: (params: DeployWalletParams) => Promise<Address | undefined>;
   verifyProof: (
     walletAddress: Address,
-    proof: SolidityProof
+    proof: SolidityProof,
   ) => Promise<boolean>;
   executeTransaction: (params: ExecuteTransactionParams) => Promise<void>;
   updateSecretHash: (
     walletAddress: Address,
-    newSecretHash: bigint
+    newSecretHash: bigint,
   ) => Promise<void>;
   getWalletInfo: (walletAddress: Address) => Promise<{
     owner: Address;
@@ -51,9 +51,9 @@ export interface UseTOTPWalletResult {
 }
 
 export function useTOTPWallet(): UseTOTPWalletResult {
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, chain } = useAccount();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { deployContractAsync } = useDeployContract();
   const { writeContractAsync } = useWriteContract();
 
   const [walletAddress, setWalletAddress] = useState<Address | null>(null);
@@ -64,16 +64,26 @@ export function useTOTPWallet(): UseTOTPWalletResult {
 
   const deployWallet = useCallback(
     async (params: DeployWalletParams): Promise<Address | undefined> => {
-      if (!walletClient || !publicClient) {
-        throw new Error("Wallet client not available");
+      if (!userAddress) {
+        throw new Error("Please connect your wallet first");
+      }
+
+      if (!chain) {
+        throw new Error("Please ensure your wallet is connected to a network");
+      }
+
+      if (!publicClient) {
+        throw new Error(
+          "Public client not available. Please check your network connection.",
+        );
       }
 
       setIsDeploying(true);
       setError(null);
 
       try {
-        // Deploy the TOTPWallet contract
-        const hash = await walletClient.deployContract({
+        // Deploy the TOTPWallet contract using useDeployContract
+        const hash = await deployContractAsync({
           abi: totpWalletAbi,
           bytecode: "0x" as `0x${string}`, // This needs to be set with actual bytecode
           args: [
@@ -82,6 +92,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
             params.ownerAddress,
             params.initialSecretHash,
           ],
+          gas: BigInt(5000000), // Set a reasonable gas limit for contract deployment
         });
 
         // Wait for transaction to be mined
@@ -101,7 +112,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         setIsDeploying(false);
       }
     },
-    [walletClient, publicClient]
+    [deployContractAsync, publicClient, userAddress, chain],
   );
 
   const verifyProof = useCallback(
@@ -133,7 +144,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         setIsVerifying(false);
       }
     },
-    [writeContractAsync, publicClient]
+    [writeContractAsync, publicClient],
   );
 
   const executeTransaction = useCallback(
@@ -162,7 +173,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         setIsExecuting(false);
       }
     },
-    [writeContractAsync, publicClient]
+    [writeContractAsync, publicClient],
   );
 
   const updateSecretHash = useCallback(
@@ -188,12 +199,12 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         throw error;
       }
     },
-    [writeContractAsync, publicClient]
+    [writeContractAsync, publicClient],
   );
 
   const getWalletInfo = useCallback(
     async (
-      walletAddress: Address
+      walletAddress: Address,
     ): Promise<{
       owner: Address;
       nonce: bigint;
@@ -235,7 +246,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         throw error;
       }
     },
-    [publicClient]
+    [publicClient],
   );
 
   const addDeposit = useCallback(
@@ -261,7 +272,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         throw error;
       }
     },
-    [writeContractAsync, publicClient]
+    [writeContractAsync, publicClient],
   );
 
   return {
