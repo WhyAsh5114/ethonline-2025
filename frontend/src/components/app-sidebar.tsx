@@ -1,7 +1,7 @@
 "use client";
 
 import { IconKey, IconLayoutDashboard } from "@tabler/icons-react";
-import { Shield } from "lucide-react";
+import { CheckCircle2, Rocket, Send, Shield, ShieldCheck } from "lucide-react";
 import type * as React from "react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -23,14 +23,47 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconLayoutDashboard,
+      title: "Main",
+      url: "#",
+      items: [
+        {
+          title: "Dashboard",
+          url: "/dashboard",
+          icon: IconLayoutDashboard,
+        },
+        {
+          title: "Authenticator",
+          url: "/authenticator",
+          icon: IconKey,
+        },
+      ],
     },
     {
-      title: "Authenticator",
-      url: "/authenticator",
-      icon: IconKey,
+      title: "Workflow",
+      url: "#",
+      icon: Shield,
+      items: [
+        {
+          title: "TOTP Setup",
+          url: "/dashboard/setup",
+          icon: ShieldCheck,
+        },
+        {
+          title: "Deploy Wallet",
+          url: "/dashboard/deploy",
+          icon: Rocket,
+        },
+        {
+          title: "Verify Proof",
+          url: "/dashboard/verify",
+          icon: CheckCircle2,
+        },
+        {
+          title: "Execute Transaction",
+          url: "/dashboard/execute",
+          icon: Send,
+        },
+      ],
     },
   ],
 };
