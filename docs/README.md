@@ -1,10 +1,13 @@
-# Documentation Index 📚
+# ChronoVault Documentation
 
-Welcome to the ZK-TOTP Wallet documentation!
+This directory contains comprehensive documentation for the ChronoVault TOTP Wallet project.
 
----
+## 🔐 Security Documentation (IMPORTANT!)
 
-## 📖 Available Documentation
+- **[SECURITY_MODEL.md](./SECURITY_MODEL.md)** - **NEW!** Comprehensive security model including transaction commitment binding, attack prevention, and threat analysis
+- **[ZK_TOTP_EXPLANATION.md](./ZK_TOTP_EXPLANATION.md)** - ELI5 guide to how ZK-TOTP works (updated with new security features)
+
+## Documentation Index
 
 ### 1. [ZK_TOTP_EXPLANATION.md](ZK_TOTP_EXPLANATION.md)
 **Complete ELI5 Guide to Zero-Knowledge TOTP**

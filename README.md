@@ -156,31 +156,43 @@ ethonline-2025/
 
 ### Zero-Knowledge Circuits
 
-Navigate to the circuits package:
+**Build circuits and deploy artifacts** (from project root):
+```bash
+pnpm build:circuits
+```
+
+This command:
+- Compiles the TOTP verification circuit
+- Generates proving and verification keys using Powers of Tau
+- Exports Solidity verifier to `blockchain/contracts/TOTPVerifier.sol`
+- **Automatically copies circuit artifacts to `frontend/public/circuits/`**
+
+Or navigate to the circuits package for individual steps:
 
 ```bash
 cd circuits
 ```
 
-**Compile circuit**
+**Compile circuit only**
 ```bash
 # Requires circom to be installed
-circom src/totp_verifier.circom --r1cs --wasm --sym -o build/
+pnpm compile
 ```
 
 **Generate proving and verification keys**
 ```bash
-# Downloads Powers of Tau and generates keys
-pnpm run setup
+# Downloads Powers of Tau, generates keys, and copies to frontend
+pnpm generate
 ```
 
-**Generate a proof**
+**Generate a test proof**
 ```bash
 # npx tsx scripts/generate_proof.ts <secret> <timestamp> [totpCode]
 npx tsx scripts/generate_proof.ts 12345 1729353600
 ```
 
-**Note**: The circuit setup automatically generates `TOTPVerifier.sol` in the `blockchain/contracts/` directory, which is used by the smart contracts for on-chain proof verification.
+> [!TIP]
+> The circuit generation automatically copies all necessary files (WASM, zkey, verification key) to the frontend, so you don't need to manually sync artifacts between packages.
 
 ### Blockchain Development
 

@@ -409,6 +409,44 @@ Contract checks:
 ❌ Contract rejects: "SecretHashMismatch!"
 ```
 
+### Attack Scenario 5: "I'll steal your private key and drain the wallet!" (NEW!)
+
+```
+Attacker steals your seed phrase/private key
+Attacker has full control over the owner account
+Attacker tries to call execute() directly:
+❌ Contract rejects: "DirectExecuteDisabled!"
+
+Attacker tries to use executeWithProof() without TOTP:
+❌ Needs valid ZK proof
+❌ Proof requires TOTP secret (not on blockchain)
+❌ Cannot generate proof without your authenticator app
+❌ Funds remain safe!
+```
+
+**Key Protection:** Even with compromised private key, attacker needs your TOTP secret to generate valid proofs. Your authenticator app is the true key to your funds.
+
+### Attack Scenario 6: "I'll front-run your transaction and change the recipient!" (NEW!)
+
+```
+You submit: Send 1 ETH to Bob with proof
+Attacker sees in mempool
+Attacker copies your proof, changes to: Send 100 ETH to Attacker
+
+Your proof contains txCommitment:
+  txCommitment = hash(Bob, 1 ETH, 0x, nonce=5) = 0xABC123...
+
+Attacker's transaction:
+  Expected: hash(Attacker, 100 ETH, 0x, nonce=5) = 0xDEF456...
+  Proof has: 0xABC123...
+  
+Contract checks:
+  require(0xDEF456... == 0xABC123...)  // ❌ MISMATCH!
+❌ Contract rejects: "TxCommitmentMismatch!"
+```
+
+**Key Protection:** The proof is cryptographically bound to specific transaction parameters (recipient, amount, data, nonce). Changing ANY parameter invalidates the proof.
+
 ---
 
 ## Part 10: The Key Innovation 💡
@@ -431,7 +469,12 @@ Contract checks:
 ✅ TOTP codes can be seen but are useless without the secret
 ✅ Each proof is ONE-TIME USE (replay protection via timeCounter tracking)
 ✅ Time-based expiration (30-second windows + 5-minute max freshness)
+✅ Transaction commitment binding (proof tied to specific tx parameters) [NEW!]
+✅ Private key compromise protection (TOTP required even with key) [NEW!]
+✅ Front-running prevention (cannot modify transaction parameters) [NEW!]
 ```
+
+**For detailed security analysis and attack scenarios, see [SECURITY_MODEL.md](./SECURITY_MODEL.md)**
 
 ---
 
