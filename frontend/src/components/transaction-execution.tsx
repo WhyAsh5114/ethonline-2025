@@ -293,8 +293,9 @@ export function TransactionExecution({
 
                 {showQRScanner && (
                   <QRProofScanner
+                    isOpen={showQRScanner}
+                    onClose={() => setShowQRScanner(false)}
                     onProofScanned={handleProofScanned}
-                    onCancel={() => setShowQRScanner(false)}
                   />
                 )}
 
