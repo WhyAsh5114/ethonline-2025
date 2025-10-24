@@ -8,8 +8,8 @@
 export const CONTRACT_ADDRESSES = {
   // Sepolia Testnet
   sepolia: {
-    entryPoint: "0xdaffe41cfedb7843e215009f97f864249a573313",
-    verifier: "0x62dd324a5dceff7a2d97bbf9d5dd499c6eb92e60",
+    entryPoint: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    verifier: "0xade23c7cbda77c933e5704254989ac7afcaf2aae",
   },
   // Hardhat Local
   hardhat: {
