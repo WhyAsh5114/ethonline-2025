@@ -28,24 +28,26 @@ circuits/
 
 ## Development
 
-### Compile Circuits
+### 1. Compile Circuits
 ```bash
 pnpm compile
 ```
 
-### Generate Proving/Verification Keys
+### 2. Generate Proving/Verification Keys and Deploy
 ```bash
-pnpm setup
+pnpm generate
 ```
 
-### Generate a Proof
+This command:
+- Downloads Powers of Tau ceremony file (if needed)
+- Generates proving keys (zkey files)
+- Exports verification key
+- Generates Solidity verifier contract
+- **Automatically copies WASM, zkey, and verification key to `frontend/public/circuits/`**
+
+### 3. Generate a Test Proof
 ```bash
 pnpm gen-proof
-```
-
-### Generate Solidity Verifier
-```bash
-pnpm gen-verifier
 ```
 
 ## Circuit Design
