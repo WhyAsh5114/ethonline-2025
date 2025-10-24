@@ -623,6 +623,94 @@ function _verifyZKProofInternal(
 
 ---
 
+## Time-Sensitive Transaction Guarantees
+
+ChronoVault's TOTP mechanism provides **cryptographic transaction deadlines** - proofs automatically expire after 5 minutes, ensuring transactions execute promptly or fail safely.
+
+### How It Works
+
+The `MAX_TIME_DIFFERENCE` constant (5 minutes) enforces that ZK proofs must be used within their validity window:
+
+```solidity
+function _checkTimestampFreshness(uint256 timestamp) internal view {
+    uint256 currentTime = block.timestamp;
+    if (timestamp > currentTime) revert TimestampInFuture();
+    if (currentTime - timestamp > MAX_TIME_DIFFERENCE) revert TimestampTooOld();
+}
+```
+
+This provides deterministic proof expiration without relying on external oracles or off-chain infrastructure.
+
+### Use Cases
+
+#### 1. **Flash Loan Protection**
+Execute DeFi trades only if they happen within the specified time window, preventing stale transactions from executing after market conditions change.
+
+```
+User approves flash loan arbitrage at T=0
+→ If mempool delay causes execution at T+6min
+→ Transaction auto-rejects (TimestampTooOld)
+→ User protected from executing under changed conditions
+```
+
+#### 2. **Price-Sensitive Trading**
+Protect users from slippage on delayed transactions by encoding time deadlines directly in the proof.
+
+```
+User sees ETH at $3,000 and initiates swap
+→ Generates proof with deadline: current time + 5min
+→ If network congestion delays transaction beyond deadline
+→ Auto-rejection prevents execution at unfavorable $2,800 price
+→ No need for complex slippage tolerance calculations
+```
+
+#### 3. **Time-Critical Operations**
+Enable operations that must execute within a specific window or fail entirely:
+
+- **Emergency Withdrawals**: Must execute within minutes or abort
+- **Auction Bids**: Expire if not mined before auction closes
+- **Conditional Approvals**: "I authorize this transfer, but only for the next 5 minutes"
+- **Rate-Limited Actions**: Ensure operations happen in intended sequence
+
+#### 4. **MEV Protection via Time Decay**
+Reduce MEV attack surface by limiting the time window attackers can exploit:
+
+```
+Attacker intercepts proof in mempool
+→ Proof has 3 minutes remaining before expiration
+→ Limited time window to coordinate attack
+→ Proof becomes worthless after deadline
+→ Reduces profitability of MEV attacks
+```
+
+#### 5. **Stale Approval Prevention**
+Traditional token approvals remain valid indefinitely. ChronoVault proofs expire:
+
+```
+Traditional Wallet: Approve token transfer → Valid forever
+ChronoVault: Approve with proof → Valid for 5 minutes only
+```
+
+### Security Benefits
+
+✅ **Deterministic Expiration**: No reliance on off-chain oracles  
+✅ **Market Condition Protection**: Prevents execution under changed conditions  
+✅ **MEV Resistance**: Limited attack window reduces profitability  
+✅ **User Safety**: Stale transactions fail instead of executing unexpectedly  
+✅ **DeFi Optimized**: Perfect for price-sensitive and time-critical operations  
+
+### Comparison: Time-Locks vs Transaction Deadlines
+
+| Feature | Traditional Time-Locks | ChronoVault Deadlines |
+|---------|------------------------|----------------------|
+| Direction | "Can't execute UNTIL time X" | "Can't execute AFTER time X" |
+| Use Case | Vesting, delays | Time-sensitive operations |
+| Expiration | No automatic expiration | Automatic after 5 minutes |
+| Stale Protection | None | Built-in |
+| DeFi Trading | Not suitable | Optimized for |
+
+---
+
 ## Security Properties
 
 ✅ **Zero-Knowledge**: Secret never revealed, even during proof verification  
@@ -633,6 +721,7 @@ function _verifyZKProofInternal(
 ✅ **Time Freshness**: 5-minute window prevents old proofs  
 ✅ **One-Time Use**: Each time counter can only be used once  
 ✅ **Device Separation**: Transaction device never sees TOTP secret  
+✅ **Cryptographic Deadlines**: Proofs expire automatically for time-sensitive operations  
 
 See [SECURITY.md](./SECURITY.md) for detailed security analysis.
 
