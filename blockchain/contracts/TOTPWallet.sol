@@ -32,6 +32,9 @@ contract TOTPWallet is IAccount {
     /// @notice Maximum allowed time difference for timestamp freshness (5 minutes)
     uint256 public constant MAX_TIME_DIFFERENCE = 5 minutes;
     
+    /// @notice BN254 field prime - used for reducing transaction commitments to match circuit behavior
+    uint256 public constant FIELD_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    
     /// @notice Nonce for replay protection
     uint256 public nonce;
     
@@ -54,6 +57,8 @@ contract TOTPWallet is IAccount {
     error TransactionFailed();
     error InvalidSignature();
     error TimeCounterAlreadyUsed();
+    error TxCommitmentMismatch();
+    error DirectExecuteDisabled();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert OnlyOwner();
@@ -78,18 +83,18 @@ contract TOTPWallet is IAccount {
         emit WalletInitialized(address(anEntryPoint), anOwner);
     }
 
-    /// @notice Verify ZK proof for TOTP code with timestamp freshness check
+    /// @notice Internal function to verify ZK proof for TOTP code with timestamp and tx commitment
     /// @param pA First part of the Groth16 proof
     /// @param pB Second part of the Groth16 proof
     /// @param pC Third part of the Groth16 proof
-    /// @param publicSignals Public signals [totpCode, timeCounter, secretHash]
+    /// @param publicSignals Public signals [totpCode, timeCounter, secretHash, txCommitment]
     /// @return bool True if proof is valid
-    function verifyZKProof(
+    function _verifyZKProofInternal(
         uint[2] calldata pA,
         uint[2][2] calldata pB,
         uint[2] calldata pC,
-        uint[3] calldata publicSignals
-    ) external returns (bool) {
+        uint[4] calldata publicSignals
+    ) internal returns (bool) {
         // publicSignals[2] is the secretHash - must match owner's secret
         if (publicSignals[2] != ownerSecretHash) revert SecretHashMismatch();
         
@@ -113,20 +118,68 @@ contract TOTPWallet is IAccount {
         return true;
     }
 
-    /// @notice Execute a single transaction from the wallet
+    /// @notice Execute a transaction with TOTP ZK proof verification
+    /// @dev This binds the proof to specific transaction parameters preventing front-running attacks
     /// @param to Destination address
     /// @param value Amount of ETH to send (in wei)
     /// @param data Transaction calldata
+    /// @param pA First part of the Groth16 proof
+    /// @param pB Second part of the Groth16 proof
+    /// @param pC Third part of the Groth16 proof
+    /// @param publicSignals Public signals [totpCode, timeCounter, secretHash, txCommitment]
     /// @return success Whether the transaction succeeded
+    function executeWithProof(
+        address to,
+        uint256 value,
+        bytes calldata data,
+        uint[2] calldata pA,
+        uint[2][2] calldata pB,
+        uint[2] calldata pC,
+        uint[4] calldata publicSignals
+    ) external onlyOwner returns (bool success) {
+        // Calculate the expected transaction commitment
+        // This binds the proof to these specific transaction parameters
+        bytes32 expectedTxCommitmentHash = keccak256(abi.encodePacked(
+            to,
+            value,
+            keccak256(data),
+            nonce
+        ));
+        
+        // Reduce modulo field prime to match circuit behavior
+        uint256 expectedTxCommitment = uint256(expectedTxCommitmentHash) % FIELD_PRIME;
+        
+        // publicSignals[3] is the txCommitment from the proof
+        // It MUST match the actual transaction parameters (after field reduction)
+        if (expectedTxCommitment != publicSignals[3]) {
+            revert TxCommitmentMismatch();
+        }
+        
+        // Verify the TOTP ZK proof
+        // This proves: 1) User knows TOTP secret, 2) TOTP code is correct, 3) Timestamp is fresh
+        _verifyZKProofInternal(pA, pB, pC, publicSignals);
+        
+        // Increment nonce for next transaction
+        nonce++;
+        
+        // Execute the transaction
+        (success, ) = to.call{value: value}(data);
+        emit TransactionExecuted(to, value, data, success);
+        if (!success) revert TransactionFailed();
+        
+        return success;
+    }
+
+    /// @notice Direct execution is disabled - use executeWithProof instead
+    /// @dev This ensures all transactions require TOTP verification, even if private key is compromised
     function execute(
         address to,
         uint256 value,
         bytes calldata data
-    ) external onlyOwner returns (bool success) {
-        (success, ) = to.call{value: value}(data);
-        emit TransactionExecuted(to, value, data, success);
-        if (!success) revert TransactionFailed();
-        return success;
+    ) external pure returns (bool) {
+        // Silence unused parameter warnings
+        to; value; data;
+        revert DirectExecuteDisabled();
     }
 
     /// @notice Execute a batch of transactions atomically
