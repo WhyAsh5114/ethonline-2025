@@ -181,6 +181,19 @@ export function AuthenticatorProofGenerator({
     ];
   };
 
+  // Auto-cycle through QR codes when proof is ready
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getProofQRData is stable and only depends on proof
+  useEffect(() => {
+    if (status === "ready" && proof) {
+      const qrCodes = getProofQRData();
+      const interval = setInterval(() => {
+        setCurrentQRIndex((prev) => (prev + 1) % qrCodes.length);
+      }, 2000); // Change QR every 2 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [status, proof]); // getProofQRData is stable since it only depends on proof
+
   return (
     <Card>
       <CardHeader>
@@ -274,20 +287,26 @@ export function AuthenticatorProofGenerator({
                       Proof Generated Successfully
                     </p>
                     <p className="mt-1 text-muted-foreground">
-                      Show QR codes {currentQRIndex + 1}/
-                      {getProofQRData().length} to your transaction device.
+                      QR codes auto-cycling. Scan all {getProofQRData().length}{" "}
+                      codes with your transaction device.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-background p-6">
-                  <QRCodeSVG
-                    value={getProofQRData()[currentQRIndex]}
-                    size={300}
-                    level="M"
-                    includeMargin
-                  />
-                  <div className="flex items-center gap-2">
+                  <div className="relative">
+                    {/* Large QR number badge */}
+                    <div className="absolute -top-2 -right-2 z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary bg-primary text-2xl font-bold text-primary-foreground">
+                      {currentQRIndex + 1}
+                    </div>
+                    <QRCodeSVG
+                      value={getProofQRData()[currentQRIndex]}
+                      size={300}
+                      level="M"
+                      includeMargin
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
                     <Button
                       onClick={() =>
                         setCurrentQRIndex((prev) =>
@@ -297,11 +316,20 @@ export function AuthenticatorProofGenerator({
                       variant="outline"
                       size="sm"
                     >
-                      Previous
+                      ← Previous
                     </Button>
-                    <span className="text-sm text-muted-foreground">
-                      {currentQRIndex + 1} / {getProofQRData().length}
-                    </span>
+                    <div className="flex items-center gap-1 text-sm font-medium">
+                      {getProofQRData().map((qrData, index) => (
+                        <div
+                          key={`qr-dot-${index}-${qrData.substring(0, 10)}`}
+                          className={`h-2 w-2 rounded-full transition-colors ${
+                            index === currentQRIndex
+                              ? "bg-primary"
+                              : "bg-muted-foreground/30"
+                          }`}
+                        />
+                      ))}
+                    </div>
                     <Button
                       onClick={() =>
                         setCurrentQRIndex((prev) =>
@@ -311,9 +339,12 @@ export function AuthenticatorProofGenerator({
                       variant="outline"
                       size="sm"
                     >
-                      Next
+                      Next →
                     </Button>
                   </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Auto-cycling every 2 seconds
+                  </p>
                 </div>
 
                 <Button
