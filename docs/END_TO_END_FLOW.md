@@ -197,15 +197,40 @@ This will:
 3. Verify proof locally
 4. Output Solidity calldata
 
-### Test 3: End-to-End in Frontend
+### Test 3: End-to-End in Frontend (Two-Device QR Flow)
 
+**On Transaction Device:**
 1. Start dev server: `pnpm dev`
 2. Connect wallet
-3. Setup TOTP (scan QR with authenticator)
+3. Setup TOTP (scan QR with authenticator app)
 4. Deploy wallet
-5. Generate ZK proof (automatically uses Poseidon code)
-6. Verify proof on-chain
-7. Execute transaction
+5. Enter transaction parameters (to, value, data)
+6. Click "Prepare Transaction QR"
+7. Display transaction request as QR code
+
+**On Authenticator Device (Separate Device/Browser):**
+8. Open authenticator page
+9. Scan transaction QR code with camera
+10. TOTP code auto-fills (Poseidon algorithm)
+11. Click "Generate Proof"
+12. Proof displays as 3 auto-cycling QR codes (2-second intervals)
+    - Part 1: pA + pB[0]
+    - Part 2: pB[1] + pC
+    - Part 3: publicSignals
+
+**Back on Transaction Device:**
+13. Click "Open QR Scanner"
+14. Scan all 3 proof QR codes (can be in any order)
+15. Scanner shows "Scanned X/3 parts" progress
+16. When all parts collected, proof auto-submits
+17. Contract verifies proof and executes transaction
+
+**Visual UX Features:**
+- Auto-cycling QR codes (no manual navigation needed)
+- Large numbered badge above QR (1, 2, 3)
+- Dot progress indicators below QR (• • •)
+- Clear scanning progress on transaction device
+- Immediate TOTP code generation (no underscore placeholders)
 
 ## Security Considerations
 

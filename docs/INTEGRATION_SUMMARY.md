@@ -21,8 +21,12 @@ The ChronoVault frontend now has full integration with ZK proofs and smart contr
 #### 3. **UI Components** (`src/components/`)
 - ✅ **wallet-deployment.tsx**: Deploy TOTPWallet contracts
 - ✅ **proof-verification.tsx**: Generate and verify ZK proofs
-- ✅ **transaction-execution.tsx**: Execute transactions through wallet
+- ✅ **transaction-execution.tsx**: Execute transactions through wallet (QR-based)
 - ✅ **totp-setup.tsx**: Setup TOTP authenticator (existing, updated)
+- ✅ **transaction-qr-display.tsx**: Display transaction request as QR code
+- ✅ **qr-transaction-scanner.tsx**: Scan transaction QR on authenticator device
+- ✅ **qr-proof-scanner.tsx**: Scan multi-part proof QR on transaction device
+- ✅ **authenticator-proof-generator.tsx**: Generate and display proof QR codes with auto-cycling
 
 #### 4. **Dashboard** (`src/app/(routes)/dashboard/page.tsx`)
 - ✅ Tabbed interface with 4 sections:
@@ -73,32 +77,63 @@ frontend/
 │       └── zk-circuits.d.ts         # ✨ New
 ```
 
-## User Flow
+## User Flow (Two-Device QR-Based Authentication)
 
-### Step 1: Connect Wallet
+### Transaction Device Flow
+
+**Step 1: Connect Wallet**
 ```
 User clicks "Connect Wallet" → Selects provider → Connected
 ```
 
-### Step 2: Setup TOTP
+**Step 2: Setup TOTP**
 ```
-Generate Secret → Scan QR Code → Enter Code → Verified ✓
+Generate Secret → Scan QR Code with Authenticator App → Account Created ✓
 ```
 
-### Step 3: Deploy Wallet
+**Step 3: Deploy Wallet**
 ```
 Enter EntryPoint Address → Enter Verifier Address → Deploy → Address Shown ✓
 ```
 
-### Step 4: Generate & Verify Proof
+**Step 4: Prepare Transaction**
 ```
-Generate TOTP Code → Generate ZK Proof → Verify Locally → Verify On-Chain ✓
+Enter Recipient → Enter Amount → Optional Calldata → "Prepare Transaction QR"
+→ Display Transaction Request QR Code
 ```
 
-### Step 5: Execute Transaction
+**Step 5: Scan Proof**
 ```
-Enter Recipient → Enter Amount → Optional Calldata → Execute ✓
+"Open QR Scanner" → Scan 3 proof QR codes from authenticator device
+→ Scanner shows "Scanned X/3 parts" → Auto-submit when complete ✓
 ```
+
+### Authenticator Device Flow
+
+**Step 1: Open Authenticator Page**
+```
+Navigate to /authenticator → Select Account → TOTP codes display immediately
+```
+
+**Step 2: Scan Transaction**
+```
+Click account card → "Scan Transaction QR" → Scan from transaction device
+→ Transaction details displayed → TOTP code auto-fills ✓
+```
+
+**Step 3: Generate Proof**
+```
+"Generate Proof" → ZK proof generated
+→ 3 QR codes auto-cycle (2-second intervals)
+→ Visual indicators: numbered badge (1/2/3) + dot progress (• • •)
+```
+
+### Multi-Part QR System
+- **Part 1**: pA + pB[0]
+- **Part 2**: pB[1] + pC  
+- **Part 3**: publicSignals
+- Auto-cycling with manual controls available
+- Scanner collects all 3 parts (any order) before submitting
 
 ## Key Features
 
@@ -176,21 +211,28 @@ To test the integration:
 ## Known Limitations
 
 ### Current State
-- ⚠️ TOTP secret uses Keccak256 hash (should migrate to Poseidon)
-- ⚠️ Wallet deployment needs bytecode (not included in hook yet)
 - ⚠️ No contract address storage (user must remember)
-- ⚠️ No error recovery flow
+- ⚠️ No error recovery flow for failed QR scans
 - ⚠️ Circuit files ~5MB total (large initial load)
+- ⚠️ Requires two separate devices/browsers for true 2FA
+
+### Resolved Issues
+- ✅ ~~TOTP secret uses Keccak256 hash~~ → Now uses Poseidon hash
+- ✅ ~~Wallet deployment needs bytecode~~ → Fixed, imports from artifact
+- ✅ ~~QR codes too large to scan~~ → Multi-part QR system implemented
+- ✅ ~~Manual TOTP entry required~~ → Auto-fill implemented
+- ✅ ~~TOTP codes show underscores on load~~ → Immediate generation added
+- ✅ ~~QR scanner library issues~~ → Migrated to @yudiel/react-qr-scanner
 
 ### Future Improvements
-- 🔮 Implement Poseidon hashing for secrets
-- 🔮 Add contract factory for deployment
 - 🔮 Store wallet addresses in local storage
 - 🔮 Add social recovery mechanism
-- 🔮 Optimize circuit file loading
+- 🔮 Optimize circuit file loading (lazy loading, compression)
 - 🔮 Add transaction history
 - 🔮 Implement batch transactions
-- 🔮 Mobile optimization
+- 🔮 Mobile optimization (PWA support)
+- 🔮 Better error handling and retry mechanisms
+- 🔮 QR code compression for even smaller parts
 
 ## Documentation
 
