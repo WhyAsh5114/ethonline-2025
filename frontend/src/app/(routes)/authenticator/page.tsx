@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AuthenticatorProofGenerator } from "@/components/authenticator-proof-generator";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,6 +47,9 @@ export default function AuthenticatorPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    null,
+  );
   const [manualSecret, setManualSecret] = useState("");
   const [manualName, setManualName] = useState("");
   const [manualAddress, setManualAddress] = useState("");
@@ -195,6 +199,27 @@ export default function AuthenticatorPage() {
     }
   };
 
+  const selectedAccount = selectedAccountId
+    ? accounts.find((a) => a.id === selectedAccountId)
+    : null;
+
+  // If an account is selected, show the proof generator
+  if (selectedAccount) {
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => setSelectedAccountId(null)}>
+            ← Back to Accounts
+          </Button>
+        </div>
+        <AuthenticatorProofGenerator
+          secret={selectedAccount.secret}
+          accountName={selectedAccount.name}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -250,7 +275,12 @@ export default function AuthenticatorPage() {
         )}
 
         {accounts.map((account) => (
-          <Card key={account.id} data-slot="authenticator-account">
+          <Card
+            key={account.id}
+            data-slot="authenticator-account"
+            className="cursor-pointer transition-colors hover:bg-accent/50"
+            onClick={() => setSelectedAccountId(account.id)}
+          >
             <CardHeader>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1 min-w-0">
@@ -262,7 +292,10 @@ export default function AuthenticatorPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleDeleteAccount(account.id, account.name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteAccount(account.id, account.name);
+                  }}
                   className="self-end sm:self-start"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -274,9 +307,10 @@ export default function AuthenticatorPage() {
                 <button
                   type="button"
                   className="flex-1 cursor-pointer select-none border-none bg-transparent p-0 text-center"
-                  onClick={() =>
-                    handleCopyCode(account.id, codes[account.id] || "------")
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyCode(account.id, codes[account.id] || "------");
+                  }}
                 >
                   <div className="text-3xl sm:text-4xl font-bold font-mono tracking-[0.3em] sm:tracking-[0.5em]">
                     {codes[account.id] || "------"}
@@ -285,9 +319,10 @@ export default function AuthenticatorPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() =>
-                    handleCopyCode(account.id, codes[account.id] || "------")
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyCode(account.id, codes[account.id] || "------");
+                  }}
                   className="ml-4"
                 >
                   {copiedId === account.id ? (
@@ -296,6 +331,11 @@ export default function AuthenticatorPage() {
                     <Copy className="h-4 w-4" />
                   )}
                 </Button>
+              </div>
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center">
+                  Click card to generate transaction proof
+                </p>
               </div>
             </CardContent>
           </Card>

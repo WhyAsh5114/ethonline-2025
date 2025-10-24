@@ -2,7 +2,7 @@
 
 import { Html5Qrcode } from "html5-qrcode";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,20 @@ export function QRTransactionScanner({
   const [isScanning, setIsScanning] = useState(false);
   const [scanner, setScanner] = useState<Html5Qrcode | null>(null);
 
-  const startScanning = async () => {
+  const stopScanning = useCallback(async () => {
+    if (scanner) {
+      try {
+        await scanner.stop();
+        scanner.clear();
+      } catch (error) {
+        console.error("Failed to stop scanner:", error);
+      }
+    }
+    setIsScanning(false);
+    setScanner(null);
+  }, [scanner]);
+
+  const startScanning = useCallback(async () => {
     try {
       setIsScanning(true);
       const html5QrCode = new Html5Qrcode("qr-tx-reader");
@@ -76,20 +89,7 @@ export function QRTransactionScanner({
       console.error("Failed to start camera:", error);
       setIsScanning(false);
     }
-  };
-
-  const stopScanning = async () => {
-    if (scanner) {
-      try {
-        await scanner.stop();
-        scanner.clear();
-      } catch (error) {
-        console.error("Failed to stop scanner:", error);
-      }
-    }
-    setIsScanning(false);
-    setScanner(null);
-  };
+  }, [onTransactionScanned, stopScanning]);
 
   const handleClose = () => {
     stopScanning();
@@ -104,7 +104,7 @@ export function QRTransactionScanner({
     return () => {
       stopScanning();
     };
-  }, [isOpen]);
+  }, [isOpen, startScanning, stopScanning]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
