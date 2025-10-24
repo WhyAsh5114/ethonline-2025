@@ -6,11 +6,13 @@ include "../node_modules/circomlib/circuits/bitify.circom";
 
 // TOTP Verifier Circuit
 // Verifies that a TOTP code is correct without revealing the secret
+// Also binds the proof to specific transaction parameters for security
 template TOTPVerifier() {
     // Public inputs
     signal input totpCode;        // The TOTP code to verify (6 digits, 0-999999)
     signal input timeCounter;     // Unix timestamp / 30
     signal input secretHash;      // Poseidon hash of the secret
+    signal input txCommitment;    // Hash of transaction parameters (to, value, data, nonce)
     
     // Private inputs
     signal input secret;          // The secret key (field element)
@@ -52,6 +54,11 @@ template TOTPVerifier() {
     
     // Step 4: Verify the TOTP code matches
     totpCode === totpCodeComputed;
+    
+    // Step 5: Bind proof to transaction
+    // The txCommitment is a public input that must match the actual transaction
+    // This ensures the proof can only be used for the specific transaction it was generated for
+    // No additional constraints needed - just including it as public input binds it to the proof
 }
 
 // Helper template for modulo operation
@@ -74,4 +81,4 @@ template Modulo(divisor) {
     lt.out === 1;
 }
 
-component main {public [totpCode, timeCounter, secretHash]} = TOTPVerifier();
+component main {public [totpCode, timeCounter, secretHash, txCommitment]} = TOTPVerifier();

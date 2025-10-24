@@ -61,12 +61,18 @@ async function generateProof(
     }
 
     // Prepare circuit inputs
+    // For testing, use a dummy txCommitment
+    const dummyTxCommitment = "123456789";
+    
     const input = {
       secret: secretBigInt.toString(),
       totpCode: totpCodeBigInt.toString(),
       timeCounter: timeCounter.toString(),
       secretHash: secretHash,
+      txCommitment: dummyTxCommitment,
     };
+    
+    console.log(`  Transaction Commitment (test): ${dummyTxCommitment}`);
 
     console.log('🔨 Generating witness...');
     const wasmFile = path.join(BUILD_DIR, 'totp_verifier_js', 'totp_verifier.wasm');
