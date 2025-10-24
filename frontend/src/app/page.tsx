@@ -73,13 +73,13 @@ export default function Home() {
               Built for ETHOnline 2025
             </div>
             <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground md:text-6xl">
-              Bank-Grade Security
-              <span className="block text-primary">Meets Web3</span>
+              Transaction-Bound
+              <span className="block text-primary">Zero-Knowledge 2FA</span>
             </h1>
-            <p className="mb-8 text- text-muted-foreground">
-              A self-custody wallet with TOTP two-factor authentication and
-              zero-knowledge proofs. Transaction-level 2FA without compromising
-              privacy or decentralization.
+            <p className="mb-8 text-lg text-muted-foreground">
+              The first TOTP wallet with cryptographically bound proofs. Each
+              transaction requires a ZK proof tied to its exact parameters—making
+              intercepted proofs useless for attackers.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" asChild>
@@ -139,7 +139,7 @@ export default function Home() {
                         Constraints
                       </div>
                       <div className="font-mono text-xs text-foreground">
-                        492 R1CS
+                        ~1,200 R1CS
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/50 p-3">
@@ -337,32 +337,70 @@ export default function Home() {
           <div className="mx-auto max-w-6xl">
             <div className="mb-16 text-center">
               <h2 className="mb-4 text-4xl font-bold text-foreground">
-                Why ChronoVault?
+                Key Innovations
               </h2>
               <p className="text-lg text-muted-foreground">
-                Bringing Web2-style security usability to Web3 self-custody
+                What makes ChronoVault different from other TOTP wallets
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <CardTitle>Transaction-Bound Proofs</CardTitle>
+                  <CardDescription>
+                    Proofs are cryptographically tied to exact transaction
+                    parameters (to, value, data, nonce)
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Smartphone className="h-5 w-5" />
+                  </div>
+                  <CardTitle>Two-Device QR Authentication</CardTitle>
+                  <CardDescription>
+                    True 2FA with device separation—transaction device never
+                    sees the secret
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="border-primary/30">
                 <CardHeader>
                   <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Clock className="h-5 w-5" />
                   </div>
-                  <CardTitle>TOTP-Based 2FA</CardTitle>
+                  <CardTitle>One-Time Use Protection</CardTitle>
                   <CardDescription>
-                    Authy-like time-based authentication for every transaction
+                    Each time window (30 sec) can only be used once—prevents
+                    all replay attacks
                   </CardDescription>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader>
                   <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Lock className="h-5 w-5" />
+                    <Zap className="h-5 w-5" />
                   </div>
-                  <CardTitle>Zero-Knowledge Proofs</CardTitle>
+                  <CardTitle>Unlimited Lifespan</CardTitle>
                   <CardDescription>
-                    Privacy-preserving verification that never exposes secrets
+                    On-demand TOTP in ZK circuits—no pre-computation, no wallet
+                    expiration
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <CircuitBoard className="h-5 w-5" />
+                  </div>
+                  <CardTitle>ZK-Friendly Hashing</CardTitle>
+                  <CardDescription>
+                    Poseidon hash (~1,200 constraints) vs SHA-1 (~40,000
+                    constraints)
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -373,40 +411,8 @@ export default function Home() {
                   </div>
                   <CardTitle>ERC-4337 Native</CardTitle>
                   <CardDescription>
-                    Smart contract wallet with programmable security policies
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Shield className="h-5 w-5" />
-                  </div>
-                  <CardTitle>Replay Protection</CardTitle>
-                  <CardDescription>
-                    Timestamp validation prevents proof reuse and attacks
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Key className="h-5 w-5" />
-                  </div>
-                  <CardTitle>Self-Custody</CardTitle>
-                  <CardDescription>
-                    Complete control over your keys and authentication secrets
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Code2 className="h-5 w-5" />
-                  </div>
-                  <CardTitle>Modern Stack</CardTitle>
-                  <CardDescription>
-                    Built with Next.js, Hardhat, Wagmi, and Viem
+                    Smart contract wallet with programmable security and account
+                    abstraction
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -432,11 +438,12 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="mb-2 text-xl font-semibold text-foreground">
-                      Client-Side Proof Generation
+                      Transaction Commitment Calculation
                     </h3>
                     <p className="text-muted-foreground">
-                      Your device generates a ZK proof demonstrating knowledge
-                      of a valid TOTP code for the current timestamp
+                      Frontend calculates commitment = hash(to, value, data,
+                      nonce) % FIELD_PRIME, binding proof to exact transaction
+                      parameters
                     </p>
                   </div>
                 </div>
@@ -447,11 +454,12 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="mb-2 text-xl font-semibold text-foreground">
-                      On-Chain Verification
+                      Two-Device Proof Generation
                     </h3>
                     <p className="text-muted-foreground">
-                      Smart contracts verify the proof's validity without
-                      accessing the TOTP secret
+                      Authenticator device scans QR, generates ZK proof with
+                      TOTP secret + commitment, displays proof as 3 auto-cycling
+                      QR codes
                     </p>
                   </div>
                 </div>
@@ -462,11 +470,11 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="mb-2 text-xl font-semibold text-foreground">
-                      Replay Attack Prevention
+                      On-Chain Verification
                     </h3>
                     <p className="text-muted-foreground">
-                      Timestamp-based validation ensures each proof can only be
-                      used once
+                      Smart contract verifies proof's commitment matches actual
+                      transaction—changing any parameter invalidates the proof
                     </p>
                   </div>
                 </div>
@@ -477,11 +485,11 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="mb-2 text-xl font-semibold text-foreground">
-                      Privacy-First
+                      One-Time Use + Execution
                     </h3>
                     <p className="text-muted-foreground">
-                      TOTP secrets never leave your device or touch the
-                      blockchain
+                      Time counter marked as used, preventing replay attacks.
+                      Transaction executes only after all verifications pass
                     </p>
                   </div>
                 </div>
