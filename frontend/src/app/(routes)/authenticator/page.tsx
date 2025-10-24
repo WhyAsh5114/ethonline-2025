@@ -88,6 +88,13 @@ export default function AuthenticatorPage() {
     loadAccounts();
   }, [loadAccounts]);
 
+  // Generate codes immediately on mount and when accounts change
+  useEffect(() => {
+    if (accounts.length > 0) {
+      generateAllCodes();
+    }
+  }, [accounts, generateAllCodes]);
+
   // Auto-refresh codes every second
   useEffect(() => {
     const updateCodesAndTimer = async () => {

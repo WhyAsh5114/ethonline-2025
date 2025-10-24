@@ -2,7 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Loader2, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Address } from "viem";
 import { QRTransactionScanner } from "@/components/qr-transaction-scanner";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { generatePoseidonTOTPCode } from "@/lib/totp";
 
 interface TransactionRequest {
   to: Address;
@@ -47,9 +48,24 @@ export function AuthenticatorProofGenerator({
   const [proof, setProof] = useState<SolidityProof | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [currentQRIndex, setCurrentQRIndex] = useState(0);
   const [status, setStatus] = useState<
     "idle" | "generating" | "ready" | "failed"
   >("idle");
+
+  // Auto-generate TOTP code when transaction is scanned
+  useEffect(() => {
+    if (txRequest && !totpCode) {
+      generatePoseidonTOTPCode(secret)
+        .then((code) => {
+          setTotpCode(code);
+        })
+        .catch((error) => {
+          console.error("Failed to generate TOTP:", error);
+          toast.error("Failed to generate TOTP code");
+        });
+    }
+  }, [txRequest, secret, totpCode]);
 
   const handleTransactionScanned = (scannedRequest: TransactionRequest) => {
     setTxRequest(scannedRequest);
@@ -119,10 +135,10 @@ export function AuthenticatorProofGenerator({
   };
 
   const getProofQRData = () => {
-    if (!proof) return "";
+    if (!proof) return [];
 
-    // Convert BigInt values to strings for JSON serialization
-    return JSON.stringify({
+    // Split proof into multiple parts for better scanning
+    const proofData = {
       pA: [proof.pA[0].toString(), proof.pA[1].toString()],
       pB: [
         [proof.pB[0][0].toString(), proof.pB[0][1].toString()],
@@ -135,7 +151,34 @@ export function AuthenticatorProofGenerator({
         proof.publicSignals[2].toString(),
         proof.publicSignals[3].toString(),
       ],
-    });
+    };
+
+    // Split into 3 parts for better QR code density
+    return [
+      JSON.stringify({
+        part: 1,
+        total: 3,
+        data: {
+          pA: proofData.pA,
+          pB0: proofData.pB[0],
+        },
+      }),
+      JSON.stringify({
+        part: 2,
+        total: 3,
+        data: {
+          pB1: proofData.pB[1],
+          pC: proofData.pC,
+        },
+      }),
+      JSON.stringify({
+        part: 3,
+        total: 3,
+        data: {
+          publicSignals: proofData.publicSignals,
+        },
+      }),
+    ];
   };
 
   return (
@@ -231,19 +274,46 @@ export function AuthenticatorProofGenerator({
                       Proof Generated Successfully
                     </p>
                     <p className="mt-1 text-muted-foreground">
-                      Show this QR code to your transaction device to complete
-                      the transaction.
+                      Show QR codes {currentQRIndex + 1}/
+                      {getProofQRData().length} to your transaction device.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex justify-center rounded-lg border border-border bg-background p-6">
+                <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-background p-6">
                   <QRCodeSVG
-                    value={getProofQRData()}
+                    value={getProofQRData()[currentQRIndex]}
                     size={300}
-                    level="L"
+                    level="M"
                     includeMargin
                   />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() =>
+                        setCurrentQRIndex((prev) =>
+                          prev > 0 ? prev - 1 : getProofQRData().length - 1,
+                        )
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {currentQRIndex + 1} / {getProofQRData().length}
+                    </span>
+                    <Button
+                      onClick={() =>
+                        setCurrentQRIndex((prev) =>
+                          prev < getProofQRData().length - 1 ? prev + 1 : 0,
+                        )
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
 
                 <Button
@@ -252,6 +322,7 @@ export function AuthenticatorProofGenerator({
                     setTotpCode("");
                     setProof(null);
                     setStatus("idle");
+                    setCurrentQRIndex(0);
                   }}
                   variant="outline"
                   className="w-full"
