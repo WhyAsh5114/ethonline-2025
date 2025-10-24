@@ -92,34 +92,6 @@ export const mockEntryPointAbi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// SimpleContract
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const simpleContractAbi = [
-  {
-    type: 'function',
-    inputs: [],
-    name: 'getValue',
-    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: '_value', internalType: 'uint256', type: 'uint256' }],
-    name: 'setValue',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'value',
-    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TOTPVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -130,7 +102,7 @@ export const totpVerifierAbi = [
       { name: '_pA', internalType: 'uint256[2]', type: 'uint256[2]' },
       { name: '_pB', internalType: 'uint256[2][2]', type: 'uint256[2][2]' },
       { name: '_pC', internalType: 'uint256[2]', type: 'uint256[2]' },
-      { name: '_pubSignals', internalType: 'uint256[3]', type: 'uint256[3]' },
+      { name: '_pubSignals', internalType: 'uint256[4]', type: 'uint256[4]' },
     ],
     name: 'verifyProof',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
@@ -161,6 +133,7 @@ export const totpWalletAbi = [
     ],
     stateMutability: 'nonpayable',
   },
+  { type: 'error', inputs: [], name: 'DirectExecuteDisabled' },
   { type: 'error', inputs: [], name: 'ECDSAInvalidSignature' },
   {
     type: 'error',
@@ -181,6 +154,7 @@ export const totpWalletAbi = [
   { type: 'error', inputs: [], name: 'TimestampInFuture' },
   { type: 'error', inputs: [], name: 'TimestampTooOld' },
   { type: 'error', inputs: [], name: 'TransactionFailed' },
+  { type: 'error', inputs: [], name: 'TxCommitmentMismatch' },
   {
     type: 'event',
     anonymous: false,
@@ -265,6 +239,13 @@ export const totpWalletAbi = [
   {
     type: 'function',
     inputs: [],
+    name: 'FIELD_PRIME',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'MAX_TIME_DIFFERENCE',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
@@ -300,8 +281,8 @@ export const totpWalletAbi = [
       { name: 'data', internalType: 'bytes', type: 'bytes' },
     ],
     name: 'execute',
-    outputs: [{ name: 'success', internalType: 'bool', type: 'bool' }],
-    stateMutability: 'nonpayable',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'pure',
   },
   {
     type: 'function',
@@ -312,6 +293,21 @@ export const totpWalletAbi = [
     ],
     name: 'executeBatch',
     outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'to', internalType: 'address', type: 'address' },
+      { name: 'value', internalType: 'uint256', type: 'uint256' },
+      { name: 'data', internalType: 'bytes', type: 'bytes' },
+      { name: 'pA', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: 'pB', internalType: 'uint256[2][2]', type: 'uint256[2][2]' },
+      { name: 'pC', internalType: 'uint256[2]', type: 'uint256[2]' },
+      { name: 'publicSignals', internalType: 'uint256[4]', type: 'uint256[4]' },
+    ],
+    name: 'executeWithProof',
+    outputs: [{ name: 'success', internalType: 'bool', type: 'bool' }],
     stateMutability: 'nonpayable',
   },
   {
@@ -399,18 +395,6 @@ export const totpWalletAbi = [
     outputs: [
       { name: 'validationData', internalType: 'uint256', type: 'uint256' },
     ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'pA', internalType: 'uint256[2]', type: 'uint256[2]' },
-      { name: 'pB', internalType: 'uint256[2][2]', type: 'uint256[2][2]' },
-      { name: 'pC', internalType: 'uint256[2]', type: 'uint256[2]' },
-      { name: 'publicSignals', internalType: 'uint256[3]', type: 'uint256[3]' },
-    ],
-    name: 'verifyZKProof',
-    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
     stateMutability: 'nonpayable',
   },
   {
