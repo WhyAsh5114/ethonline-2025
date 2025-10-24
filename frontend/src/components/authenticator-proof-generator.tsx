@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Address } from "viem";
+import { QRTransactionScanner } from "@/components/qr-transaction-scanner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,31 +46,16 @@ export function AuthenticatorProofGenerator({
   const [totpCode, setTotpCode] = useState("");
   const [proof, setProof] = useState<SolidityProof | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [status, setStatus] = useState<
     "idle" | "generating" | "ready" | "failed"
   >("idle");
 
-  const _handleScanQR = (scannedData: string) => {
-    try {
-      const request = JSON.parse(scannedData) as TransactionRequest;
-
-      // Convert string values back to bigint
-      const parsedRequest: TransactionRequest = {
-        to: request.to,
-        value: BigInt(request.value),
-        data: request.data,
-        nonce: BigInt(request.nonce),
-        commitment: BigInt(request.commitment),
-        walletAddress: request.walletAddress,
-      };
-
-      setTxRequest(parsedRequest);
-      setStatus("idle");
-      toast.success("Transaction request scanned successfully");
-    } catch (error) {
-      console.error("Failed to parse QR code:", error);
-      toast.error("Invalid transaction request QR code");
-    }
+  const handleTransactionScanned = (scannedRequest: TransactionRequest) => {
+    setTxRequest(scannedRequest);
+    setShowScanner(false);
+    setStatus("idle");
+    toast.success("Transaction request scanned successfully");
   };
 
   const handleGenerateProof = async () => {
@@ -177,16 +163,21 @@ export function AuthenticatorProofGenerator({
             </div>
 
             <Button
-              onClick={() => {
-                // This would open a QR scanner - for now, show placeholder
-                toast.info("QR Scanner integration pending");
-              }}
+              onClick={() => setShowScanner(true)}
               variant="outline"
               className="w-full"
             >
               <QrCode className="mr-2 h-4 w-4" />
-              Open QR Scanner
+              Scan Transaction QR
             </Button>
+
+            {showScanner && (
+              <QRTransactionScanner
+                isOpen={showScanner}
+                onClose={() => setShowScanner(false)}
+                onTransactionScanned={handleTransactionScanned}
+              />
+            )}
           </div>
         ) : (
           <div className="space-y-4">

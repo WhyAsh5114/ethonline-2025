@@ -1,5 +1,6 @@
 "use client";
 
+import TOTPWalletArtifact from "blockchain/artifacts/contracts/TOTPWallet.sol/TOTPWallet.json";
 import { totpWalletAbi } from "blockchain/generated";
 import { useCallback, useState } from "react";
 import type { Address } from "viem";
@@ -94,7 +95,7 @@ export function useTOTPWallet(): UseTOTPWalletResult {
         // Deploy the TOTPWallet contract using useDeployContract
         const hash = await deployContractAsync({
           abi: totpWalletAbi,
-          bytecode: "0x" as `0x${string}`, // This needs to be set with actual bytecode
+          bytecode: TOTPWalletArtifact.bytecode as `0x${string}`,
           args: [
             params.entryPointAddress,
             params.verifierAddress,
