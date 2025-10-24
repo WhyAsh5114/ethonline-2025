@@ -217,21 +217,32 @@ Secret: 12345
 Current time: 1729353600
 ```
 
-### Step 2: Calculate (Still private):
+### Step 2: Calculate Transaction Info:
+```
+You want to send: 1 ETH to Alice (0x742d35Cc...)
+Your wallet's nonce: 5
+
+Transaction commitment: 
+  hash(0x742d35Cc..., 1 ETH, 0x, nonce:5) % FIELD_PRIME
+  = 98765432109876543210...
+```
+
+### Step 3: Calculate TOTP (Still private):
 ```
 Time counter: 1729353600 ÷ 30 = 57645120
 TOTP code: Poseidon(12345, 57645120) % 1000000 = 586413
 Secret hash: Poseidon(12345) = 42675337744...
 ```
 
-### Step 3: Create the Proof (Using snarkjs):
+### Step 4: Create the Proof (Using snarkjs):
 ```javascript
 // Your inputs
 const input = {
-  secret: "12345",              // Private!
-  totpCode: "586413",           // Public
-  timeCounter: "57645120",      // Public
-  secretHash: "42675337744..."  // Public
+  secret: "12345",                    // Private!
+  totpCode: "586413",                 // Public
+  timeCounter: "57645120",            // Public
+  secretHash: "42675337744...",       // Public
+  txCommitment: "98765432109876..."   // Public ← NEW!
 };
 
 // Generate proof
@@ -242,7 +253,7 @@ const { proof, publicSignals } = await snarkjs.groth16.fullProve(
 );
 ```
 
-### Step 4: What You Get:
+### Step 5: What You Get:
 ```javascript
 proof = {
   pA: [big number, big number],        // Part 1 of proof
@@ -251,11 +262,14 @@ proof = {
 }
 
 publicSignals = [
-  586413,           // The TOTP code
-  57645120,         // The time counter
-  42675337744...    // The secret hash
+  586413,              // [0] The TOTP code
+  57645120,            // [1] The time counter
+  42675337744...,      // [2] The secret hash
+  98765432109876...    // [3] The transaction commitment ← NEW!
 ]
 ```
+
+**Important:** The proof now proves you know the secret AND that you're authorizing THIS SPECIFIC transaction to Alice!
 
 ### Step 5: Send to Blockchain:
 ```
@@ -277,7 +291,29 @@ if (publicSignals[2] != ownerSecretHash) {
 }
 ```
 
-### Step 2: Check Timestamp
+### Step 2: Check Transaction Commitment
+```solidity
+// Calculate what the commitment SHOULD be for this transaction
+uint256 expectedCommitment = keccak256(abi.encodePacked(
+    to,              // The address you're sending to (from function params)
+    value,           // The ETH amount (from function params)
+    keccak256(data), // Hash of call data (from function params)
+    nonce            // Current nonce (from contract state)
+));
+
+// Does the proof's commitment match?
+if (publicSignals[3] != expectedCommitment % FIELD_PRIME) {
+    revert("Proof not for this transaction!");
+}
+```
+
+**This is CRITICAL!** It means:
+- The proof is only valid for THIS EXACT transaction
+- Changing the destination? Proof fails.
+- Changing the amount? Proof fails.
+- Attacker intercepts proof? Can't use it for different transaction!
+
+### Step 3: Check Timestamp
 ```solidity
 // Is the time fresh? (not too old, not future)
 uint256 timestamp = publicSignals[1] * 30;
@@ -286,7 +322,17 @@ if (timestamp too old OR timestamp in future) {
 }
 ```
 
-### Step 3: Verify the Cryptographic Proof
+### Step 4: Check Time Counter Not Reused
+```solidity
+// Has this time window been used before?
+if (publicSignals[1] <= lastUsedTimeCounter) {
+    revert("Time counter already used!");
+}
+```
+
+This prevents replay attacks! Even if someone captures your proof, they can't reuse it.
+
+### Step 5: Verify the Cryptographic Proof
 ```solidity
 // This is the magic! The verifier contract checks:
 // "Does this proof mathematically prove that someone knows
