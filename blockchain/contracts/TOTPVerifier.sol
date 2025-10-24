@@ -37,10 +37,10 @@ contract TOTPVerifier {
     uint256 constant gammax2 = 10857046999023057135944570762232829481370756359578518086990519993285655852781;
     uint256 constant gammay1 = 4082367875863433681332203403145435568316851327593401208105741076214120093531;
     uint256 constant gammay2 = 8495653923123431417604973247489272438418190587263600148770280649306958101930;
-    uint256 constant deltax1 = 15387562857477183104389992581782094873620030230673223985313986146303430340571;
-    uint256 constant deltax2 = 8877809165518195973264087135036569190931984262805483106264994718142603989848;
-    uint256 constant deltay1 = 1127379810027932399498212102878036004115545394669287938103410376058618968768;
-    uint256 constant deltay2 = 6416809598657506906701060325186669432731578736437660373197455006468954034637;
+    uint256 constant deltax1 = 6712176379597960963112550075587606193495386973757593889605961402071190913432;
+    uint256 constant deltax2 = 16168382522943851115211903983679969552941981412335402573674927145040418676299;
+    uint256 constant deltay1 = 806969613636097595665462103688104038244162001412317055240385291813349838116;
+    uint256 constant deltay2 = 19177829451265146913017755236797492438520174090840116161339049399732598131130;
 
     
     uint256 constant IC0x = 12327518999218128949174182902641399630388909486994255097834260668037535126192;
@@ -55,6 +55,9 @@ contract TOTPVerifier {
     uint256 constant IC3x = 10825198948589329697130817122049544609877305711711663546372987507119985841507;
     uint256 constant IC3y = 17031138972440921757228482408971892641030269539700496391270901007823023269571;
     
+    uint256 constant IC4x = 17781521894687699243904918432987195085873784037714709708511914287974189434815;
+    uint256 constant IC4y = 15727647900827481188356247761457779671229385586364765307863076997463599140223;
+    
  
     // Memory data
     uint16 constant pVk = 0;
@@ -62,7 +65,7 @@ contract TOTPVerifier {
 
     uint16 constant pLastMem = 896;
 
-    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[3] calldata _pubSignals) public view returns (bool) {
+    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[4] calldata _pubSignals) public view returns (bool) {
         assembly {
             function checkField(v) {
                 if iszero(lt(v, r)) {
@@ -111,6 +114,8 @@ contract TOTPVerifier {
                 g1_mulAccC(_pVk, IC2x, IC2y, calldataload(add(pubSignals, 32)))
                 
                 g1_mulAccC(_pVk, IC3x, IC3y, calldataload(add(pubSignals, 64)))
+                
+                g1_mulAccC(_pVk, IC4x, IC4y, calldataload(add(pubSignals, 96)))
                 
 
                 // -A
@@ -170,6 +175,8 @@ contract TOTPVerifier {
             checkField(calldataload(add(_pubSignals, 32)))
             
             checkField(calldataload(add(_pubSignals, 64)))
+            
+            checkField(calldataload(add(_pubSignals, 96)))
             
 
             // Validate all evaluations
