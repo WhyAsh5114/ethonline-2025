@@ -183,10 +183,11 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => router.push("/dashboard/verify")}
+            onClick={() => router.push("/dashboard/deploy")}
+            disabled={!profile?.walletAddress}
             className="w-full"
           >
-            Verify Proof
+            Fund Wallet
           </Button>
           <Button
             variant="outline"

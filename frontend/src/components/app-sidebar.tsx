@@ -1,7 +1,7 @@
 "use client";
 
 import { IconKey, IconLayoutDashboard } from "@tabler/icons-react";
-import { CheckCircle2, Rocket, Send, Shield, ShieldCheck } from "lucide-react";
+import { Rocket, Send, Shield, ShieldCheck, Wallet } from "lucide-react";
 import type * as React from "react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -54,9 +54,9 @@ const data = {
           icon: Rocket,
         },
         {
-          title: "Verify Proof",
-          url: "/dashboard/verify",
-          icon: CheckCircle2,
+          title: "Fund Wallet",
+          url: "/dashboard/deploy",
+          icon: Wallet,
         },
         {
           title: "Execute Transaction",
