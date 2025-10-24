@@ -294,18 +294,18 @@ export function AuthenticatorProofGenerator({
                 </div>
 
                 <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-background p-6">
-                  <div className="relative">
-                    {/* Large QR number badge */}
-                    <div className="absolute -top-2 -right-2 z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary bg-primary text-2xl font-bold text-primary-foreground">
-                      {currentQRIndex + 1}
-                    </div>
-                    <QRCodeSVG
-                      value={getProofQRData()[currentQRIndex]}
-                      size={300}
-                      level="M"
-                      includeMargin
-                    />
+                  {/* Large QR number badge above QR code */}
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-primary bg-primary text-3xl font-bold text-primary-foreground shadow-lg">
+                    {currentQRIndex + 1}
                   </div>
+
+                  <QRCodeSVG
+                    value={getProofQRData()[currentQRIndex]}
+                    size={300}
+                    level="M"
+                    includeMargin
+                  />
+
                   <div className="flex items-center gap-3">
                     <Button
                       onClick={() =>
