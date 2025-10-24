@@ -1,5 +1,6 @@
 import { buildPoseidon } from "circomlibjs";
 import * as snarkjs from "snarkjs";
+import { keccak256 } from "viem";
 
 export interface ZKProof {
   proof: {
@@ -22,7 +23,14 @@ export interface SolidityProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
-  publicSignals: [bigint, bigint, bigint];
+  publicSignals: [bigint, bigint, bigint, bigint];
+}
+
+export interface TxParams {
+  to: string;
+  value: bigint;
+  data: string;
+  nonce: bigint;
 }
 
 /**
@@ -53,10 +61,33 @@ export async function calculateTOTPCode(
 }
 
 /**
- * Generate a ZK proof for TOTP verification
+ * Calculate transaction commitment hash
+ * Matches Solidity: keccak256(abi.encodePacked(to, value, keccak256(data), nonce))
+ * @param txParams Transaction parameters (to, value, data, nonce)
+ */
+export function calculateTxCommitment(txParams: TxParams): bigint {
+  // First hash the data
+  const dataHash = keccak256(txParams.data as `0x${string}`);
+
+  // Use encodeAbiParameters which matches Solidity's encoding exactly
+  // Note: abi.encodePacked in Solidity actually DOES pad uint256 to 32 bytes
+  // The confusion was that the initial implementation was correct
+  const packed = `0x${txParams.to.slice(2).toLowerCase()}${txParams.value
+    .toString(16)
+    .padStart(64, "0")}${dataHash.slice(2)}${txParams.nonce
+    .toString(16)
+    .padStart(64, "0")}` as `0x${string}`;
+
+  const commitmentHash = keccak256(packed);
+  return BigInt(commitmentHash);
+}
+
+/**
+ * Generate a ZK proof for TOTP verification with transaction binding
  * @param secret The TOTP secret (numeric string)
  * @param totpCode The current TOTP code
  * @param timestamp The current Unix timestamp
+ * @param txParams Transaction parameters to bind the proof to
  * @param wasmPath Path to the WASM file (default: /circuits/totp_verifier.wasm)
  * @param zkeyPath Path to the zkey file (default: /circuits/totp_verifier_final.zkey)
  */
@@ -64,6 +95,7 @@ export async function generateZKProof(
   secret: string,
   totpCode: string,
   timestamp: number,
+  txParams: TxParams,
   wasmPath = "/circuits/totp_verifier.wasm",
   zkeyPath = "/circuits/totp_verifier_final.zkey",
 ): Promise<ZKProof> {
@@ -88,12 +120,16 @@ export async function generateZKProof(
       );
     }
 
+    // Calculate transaction commitment
+    const txCommitment = calculateTxCommitment(txParams);
+
     // Prepare circuit inputs
     const input = {
       secret: secretBigInt.toString(),
       totpCode: totpCodeBigInt.toString(),
       timeCounter: timeCounter.toString(),
       secretHash: secretHash,
+      txCommitment: txCommitment.toString(),
     };
 
     // Generate proof
@@ -153,10 +189,11 @@ export function formatProofForSolidity(proof: ZKProof): SolidityProof {
     BigInt(proof.proof.pi_c[1]),
   ];
 
-  const publicSignals: [bigint, bigint, bigint] = [
+  const publicSignals: [bigint, bigint, bigint, bigint] = [
     BigInt(proof.publicSignals[0]),
     BigInt(proof.publicSignals[1]),
     BigInt(proof.publicSignals[2]),
+    BigInt(proof.publicSignals[3]),
   ];
 
   return { pA, pB, pC, publicSignals };
