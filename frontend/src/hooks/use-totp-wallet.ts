@@ -9,7 +9,6 @@ import {
   usePublicClient,
   useWriteContract,
 } from "wagmi";
-import type { SolidityProof } from "@/lib/zk-proof";
 
 export interface DeployWalletParams {
   entryPointAddress: Address;
@@ -23,20 +22,31 @@ export interface ExecuteTransactionParams {
   to: Address;
   value: bigint;
   data: `0x${string}`;
+  totpCode: string;
+  secret: string;
+}
+
+export interface ExecuteWithProofParams {
+  walletAddress: Address;
+  to: Address;
+  value: bigint;
+  data: `0x${string}`;
+  proof: {
+    pA: readonly [bigint, bigint];
+    pB: readonly [readonly [bigint, bigint], readonly [bigint, bigint]];
+    pC: readonly [bigint, bigint];
+    publicSignals: readonly [bigint, bigint, bigint, bigint];
+  };
 }
 
 export interface UseTOTPWalletResult {
   walletAddress: Address | null;
   isDeploying: boolean;
   isExecuting: boolean;
-  isVerifying: boolean;
   error: Error | null;
   deployWallet: (params: DeployWalletParams) => Promise<Address | undefined>;
-  verifyProof: (
-    walletAddress: Address,
-    proof: SolidityProof,
-  ) => Promise<boolean>;
   executeTransaction: (params: ExecuteTransactionParams) => Promise<void>;
+  executeWithProof: (params: ExecuteWithProofParams) => Promise<void>;
   updateSecretHash: (
     walletAddress: Address,
     newSecretHash: bigint,
@@ -59,7 +69,6 @@ export function useTOTPWallet(): UseTOTPWalletResult {
   const [walletAddress, setWalletAddress] = useState<Address | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const deployWallet = useCallback(
@@ -115,54 +124,74 @@ export function useTOTPWallet(): UseTOTPWalletResult {
     [deployContractAsync, publicClient, userAddress, chain],
   );
 
-  const verifyProof = useCallback(
-    async (walletAddress: Address, proof: SolidityProof): Promise<boolean> => {
-      setIsVerifying(true);
-      setError(null);
-
-      try {
-        const hash = await writeContractAsync({
-          address: walletAddress,
-          abi: totpWalletAbi,
-          functionName: "verifyZKProof",
-          args: [proof.pA, proof.pB, proof.pC, proof.publicSignals],
-        });
-
-        if (!publicClient) {
-          throw new Error("Public client not available");
-        }
-
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return receipt.status === "success";
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        setError(error);
-        throw error;
-      } finally {
-        setIsVerifying(false);
-      }
-    },
-    [writeContractAsync, publicClient],
-  );
-
   const executeTransaction = useCallback(
     async (params: ExecuteTransactionParams): Promise<void> => {
       setIsExecuting(true);
       setError(null);
 
       try {
-        const hash = await writeContractAsync({
-          address: params.walletAddress,
-          abi: totpWalletAbi,
-          functionName: "execute",
-          args: [params.to, params.value, params.data],
-        });
-
         if (!publicClient) {
           throw new Error("Public client not available");
         }
+
+        // Get current nonce from wallet
+        const nonce = await publicClient.readContract({
+          address: params.walletAddress,
+          abi: totpWalletAbi,
+          functionName: "nonce",
+        });
+
+        // Import ZK proof generation
+        const { generateZKProof, formatProofForSolidity } = await import(
+          "@/lib/zk-proof"
+        );
+
+        type TxParams = {
+          to: string;
+          value: bigint;
+          data: string;
+          nonce: bigint;
+        };
+
+        // Prepare transaction parameters for commitment
+        const txParams: TxParams = {
+          to: params.to,
+          value: params.value,
+          data: params.data,
+          nonce: nonce,
+        };
+
+        // Generate ZK proof with transaction binding
+        const timestamp = Math.floor(Date.now() / 1000);
+        const zkProof = await generateZKProof(
+          params.secret,
+          params.totpCode,
+          timestamp,
+          txParams,
+        );
+
+        if (!zkProof) {
+          throw new Error("Failed to generate ZK proof");
+        }
+
+        // Convert proof to Solidity format
+        const solidityProof = formatProofForSolidity(zkProof);
+
+        // Execute transaction with proof
+        const hash = await writeContractAsync({
+          address: params.walletAddress,
+          abi: totpWalletAbi,
+          functionName: "executeWithProof",
+          args: [
+            params.to,
+            params.value,
+            params.data,
+            solidityProof.pA,
+            solidityProof.pB,
+            solidityProof.pC,
+            solidityProof.publicSignals,
+          ],
+        });
 
         await publicClient.waitForTransactionReceipt({ hash });
       } catch (err) {
@@ -249,6 +278,44 @@ export function useTOTPWallet(): UseTOTPWalletResult {
     [publicClient],
   );
 
+  const executeWithProof = useCallback(
+    async (params: ExecuteWithProofParams): Promise<void> => {
+      setIsExecuting(true);
+      setError(null);
+
+      try {
+        if (!publicClient) {
+          throw new Error("Public client not available");
+        }
+
+        // Execute transaction with the provided proof
+        const hash = await writeContractAsync({
+          address: params.walletAddress,
+          abi: totpWalletAbi,
+          functionName: "executeWithProof",
+          args: [
+            params.to,
+            params.value,
+            params.data,
+            params.proof.pA,
+            params.proof.pB,
+            params.proof.pC,
+            params.proof.publicSignals,
+          ],
+        });
+
+        await publicClient.waitForTransactionReceipt({ hash });
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        setError(error);
+        throw error;
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    [writeContractAsync, publicClient],
+  );
+
   const addDeposit = useCallback(
     async (walletAddress: Address, amount: bigint): Promise<void> => {
       setError(null);
@@ -279,11 +346,10 @@ export function useTOTPWallet(): UseTOTPWalletResult {
     walletAddress,
     isDeploying,
     isExecuting,
-    isVerifying,
     error,
     deployWallet,
-    verifyProof,
     executeTransaction,
+    executeWithProof,
     updateSecretHash,
     getWalletInfo,
     addDeposit,
