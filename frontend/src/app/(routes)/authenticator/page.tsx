@@ -6,12 +6,14 @@ import {
   Download,
   Plus,
   QrCode,
+  Scan,
   Trash2,
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthenticatorProofGenerator } from "@/components/authenticator-proof-generator";
+import { TOTPQRScanner } from "@/components/totp-qr-scanner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,6 +49,7 @@ export default function AuthenticatorPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [isScanningQR, setIsScanningQR] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null,
   );
@@ -206,6 +209,29 @@ export default function AuthenticatorPage() {
     }
   };
 
+  const handleQRScanned = async (account: {
+    secret: string;
+    address: string;
+    name: string;
+  }) => {
+    try {
+      await addAccount({
+        secret: account.secret,
+        address: account.address,
+        name: account.name,
+        secretHash: "0", // Will be calculated if needed
+      });
+
+      toast.success("Account added successfully from QR code");
+      await loadAccounts();
+    } catch (error) {
+      console.error("Failed to add account from QR:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add account",
+      );
+    }
+  };
+
   const selectedAccount = selectedAccountId
     ? accounts.find((a) => a.id === selectedAccountId)
     : null;
@@ -353,7 +379,7 @@ export default function AuthenticatorPage() {
         <DialogTrigger asChild>
           <Button className="mt-6 w-full gap-2">
             <Plus className="h-4 w-4" />
-            Add Account
+            Add Account Manually
           </Button>
         </DialogTrigger>
         <DialogContent>
@@ -407,6 +433,21 @@ export default function AuthenticatorPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={() => setIsScanningQR(true)}
+      >
+        <Scan className="h-4 w-4" />
+        Scan QR Code
+      </Button>
+
+      <TOTPQRScanner
+        isOpen={isScanningQR}
+        onClose={() => setIsScanningQR(false)}
+        onAccountScanned={handleQRScanned}
+      />
     </div>
   );
 }

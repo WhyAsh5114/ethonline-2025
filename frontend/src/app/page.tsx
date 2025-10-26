@@ -1,22 +1,5 @@
 "use client";
 
-import {
-  ArrowRight,
-  CheckCircle2,
-  CircuitBoard,
-  Clock,
-  Code2,
-  FileKey2,
-  Github,
-  Key,
-  Layers,
-  Lock,
-  Shield,
-  Smartphone,
-  Wallet,
-  Zap,
-} from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +9,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CircuitBoard,
+  Clock,
+  Code2,
+  FileKey2,
+  Github,
+  Layers,
+  Lock,
+  Shield,
+  Smartphone,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -78,8 +77,8 @@ export default function Home() {
             </h1>
             <p className="mb-8 text-lg text-muted-foreground">
               The first TOTP wallet with cryptographically bound proofs. Each
-              transaction requires a ZK proof tied to its exact parameters—making
-              intercepted proofs useless for attackers.
+              transaction requires a ZK proof tied to its exact
+              parameters—making intercepted proofs useless for attackers.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" asChild>
@@ -375,8 +374,8 @@ export default function Home() {
                   </div>
                   <CardTitle>One-Time Use Protection</CardTitle>
                   <CardDescription>
-                    Each time window (30 sec) can only be used once—prevents
-                    all replay attacks
+                    Each time window (30 sec) can only be used once—prevents all
+                    replay attacks
                   </CardDescription>
                 </CardHeader>
               </Card>
