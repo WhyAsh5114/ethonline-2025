@@ -13,7 +13,8 @@
       "!.next",
       "!dist",
       "!build",
-      "!src/components/ui"
+      "!src/components/ui",
+      "!public/circuits"
     ]
   },
   "formatter": {
