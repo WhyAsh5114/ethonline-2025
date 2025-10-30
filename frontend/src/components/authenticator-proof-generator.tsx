@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, QrCode } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  QrCode,
+  Upload,
+} from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { uploadProof } from "@/lib/proof-transfer-actions";
 import { generatePoseidonTOTPCode } from "@/lib/totp";
 
 interface TransactionRequest {
@@ -25,6 +32,7 @@ interface TransactionRequest {
   nonce: bigint;
   commitment: bigint;
   walletAddress: Address;
+  transferId?: string;
 }
 
 interface SolidityProof {
@@ -47,10 +55,11 @@ export function AuthenticatorProofGenerator({
   const [totpCode, setTotpCode] = useState("");
   const [proof, setProof] = useState<SolidityProof | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [currentQRIndex, setCurrentQRIndex] = useState(0);
   const [status, setStatus] = useState<
-    "idle" | "generating" | "ready" | "failed"
+    "idle" | "generating" | "ready" | "uploaded" | "failed"
   >("idle");
 
   // Auto-generate TOTP code when transaction is scanned
@@ -120,9 +129,15 @@ export function AuthenticatorProofGenerator({
 
       setProof(solidityProof);
       setStatus("ready");
-      toast.success(
-        "Proof generated successfully! Show QR to transaction device.",
-      );
+
+      // If this is an online transfer, upload proof automatically
+      if (txRequest.transferId) {
+        await handleUploadProof(solidityProof, txRequest.transferId);
+      } else {
+        toast.success(
+          "Proof generated successfully! Show QR to transaction device.",
+        );
+      }
     } catch (error) {
       console.error("Failed to generate proof:", error);
       setStatus("failed");
@@ -131,6 +146,34 @@ export function AuthenticatorProofGenerator({
       );
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleUploadProof = async (
+    proofToUpload: SolidityProof,
+    transferId: string,
+  ) => {
+    try {
+      setIsUploading(true);
+
+      const result = await uploadProof(transferId, proofToUpload);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to upload proof");
+      }
+
+      setStatus("uploaded");
+      toast.success(
+        "Proof uploaded successfully! Transaction will execute automatically.",
+      );
+    } catch (error) {
+      console.error("Failed to upload proof:", error);
+      setStatus("failed");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload proof",
+      );
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -278,7 +321,7 @@ export function AuthenticatorProofGenerator({
               </div>
             )}
 
-            {status === "ready" && proof && (
+            {status === "ready" && proof && !txRequest.transferId && (
               <div className="space-y-4">
                 <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
@@ -363,6 +406,68 @@ export function AuthenticatorProofGenerator({
               </div>
             )}
 
+            {status === "uploaded" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      Proof Uploaded Successfully
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      The transaction device will execute the transaction
+                      automatically.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setTxRequest(null);
+                    setTotpCode("");
+                    setProof(null);
+                    setStatus("idle");
+                    setCurrentQRIndex(0);
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Generate Another Proof
+                </Button>
+              </div>
+            )}
+
+            {status === "uploaded" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      Proof Uploaded Successfully
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      Your proof has been uploaded. The transaction will execute
+                      automatically on the other device.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setTxRequest(null);
+                    setTotpCode("");
+                    setProof(null);
+                    setStatus("idle");
+                    setCurrentQRIndex(0);
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Generate Another Proof
+                </Button>
+              </div>
+            )}
+
             {status === "failed" && (
               <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
                 <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
@@ -377,16 +482,28 @@ export function AuthenticatorProofGenerator({
               </div>
             )}
 
-            {status !== "ready" && (
+            {status !== "ready" && status !== "uploaded" && (
               <Button
                 onClick={handleGenerateProof}
-                disabled={!totpCode || totpCode.length !== 6 || isGenerating}
+                disabled={
+                  !totpCode ||
+                  totpCode.length !== 6 ||
+                  isGenerating ||
+                  isUploading
+                }
                 className="w-full"
               >
-                {isGenerating ? (
+                {isGenerating || isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Proof...
+                    {isGenerating
+                      ? "Generating Proof..."
+                      : "Uploading Proof..."}
+                  </>
+                ) : txRequest?.transferId ? (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Generate & Upload Proof
                   </>
                 ) : (
                   <>

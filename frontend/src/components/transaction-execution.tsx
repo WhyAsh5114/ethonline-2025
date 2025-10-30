@@ -1,7 +1,14 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, QrCode, Send } from "lucide-react";
-import { useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  QrCode,
+  Send,
+  Wifi,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   type Address,
@@ -25,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTOTPWallet } from "@/hooks/use-totp-wallet";
+import { createProofTransfer, fetchProof } from "@/lib/proof-transfer-actions";
 
 interface TransactionExecutionProps {
   walletAddress: Address | null;
@@ -44,7 +52,10 @@ type TransactionRequest = {
   nonce: bigint;
   commitment: bigint;
   walletAddress: Address;
+  transferId?: string; // UUID for online proof transfer
 };
+
+type ProofMethod = "qr" | "online";
 
 export function TransactionExecution({
   walletAddress,
@@ -58,6 +69,8 @@ export function TransactionExecution({
   const [_proof, setProof] = useState<SolidityProof | null>(null);
   const [showQRRequest, setShowQRRequest] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [proofMethod, setProofMethod] = useState<ProofMethod | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
   const [executionStatus, setExecutionStatus] = useState<
     "idle" | "preparing" | "waiting_proof" | "executing" | "success" | "failed"
   >("idle");
@@ -67,7 +80,73 @@ export function TransactionExecution({
     "21888242871839275222246405745257275088548364400416034343698204186575808495617",
   );
 
-  const handlePrepareTransaction = async () => {
+  // Poll for proof when using online method
+  useEffect(() => {
+    if (!isPolling || !txRequest?.transferId) return;
+
+    let isMounted = true;
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+
+      try {
+        if (!txRequest.transferId) return;
+        const result = await fetchProof(txRequest.transferId);
+
+        if (result.success && result.proof && isMounted) {
+          setIsPolling(false);
+          clearInterval(pollInterval);
+
+          // Execute transaction with fetched proof
+          if (!txRequest) {
+            toast.error("No transaction request prepared");
+            return;
+          }
+
+          try {
+            setExecutionStatus("executing");
+            setProof(result.proof);
+
+            await executeWithProof({
+              walletAddress: txRequest.walletAddress,
+              to: txRequest.to,
+              value: txRequest.value,
+              data: txRequest.data,
+              proof: result.proof,
+            });
+
+            setExecutionStatus("success");
+            toast.success("Transaction executed successfully!");
+
+            // Reset form
+            setRecipient("");
+            setAmount("");
+            setCallData("");
+            setTxRequest(null);
+            setProof(null);
+            setShowQRRequest(false);
+            setProofMethod(null);
+          } catch (error) {
+            console.error("Failed to execute transaction:", error);
+            setExecutionStatus("failed");
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Failed to execute transaction",
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
+  }, [isPolling, txRequest, executeWithProof]);
+
+  const handlePrepareTransaction = async (method: ProofMethod) => {
     if (!walletAddress) {
       toast.error("Wallet not deployed");
       return;
@@ -80,6 +159,7 @@ export function TransactionExecution({
 
     try {
       setExecutionStatus("preparing");
+      setProofMethod(method);
 
       const value = amount ? parseEther(amount) : BigInt(0);
       const data = (callData || "0x") as `0x${string}`;
@@ -107,10 +187,27 @@ export function TransactionExecution({
         walletAddress,
       };
 
+      // If using online method, create DB entry and include transfer ID
+      if (method === "online") {
+        const transferId = crypto.randomUUID();
+        const result = await createProofTransfer(transferId);
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to create proof transfer");
+        }
+
+        request.transferId = transferId;
+        setIsPolling(true);
+        toast.success(
+          "Transaction prepared. Waiting for proof from authenticator...",
+        );
+      } else {
+        toast.success("Transaction prepared. Show QR to authenticator device.");
+      }
+
       setTxRequest(request);
       setShowQRRequest(true);
       setExecutionStatus("waiting_proof");
-      toast.success("Transaction prepared. Show QR to authenticator device.");
     } catch (error) {
       console.error("Failed to prepare transaction:", error);
       setExecutionStatus("failed");
@@ -122,7 +219,7 @@ export function TransactionExecution({
     }
   };
 
-  const handleProofScanned = async (scannedProof: SolidityProof) => {
+  const handleProofReceived = async (receivedProof: SolidityProof) => {
     if (!txRequest) {
       toast.error("No transaction request prepared");
       return;
@@ -131,15 +228,15 @@ export function TransactionExecution({
     try {
       setExecutionStatus("executing");
       setShowQRScanner(false);
-      setProof(scannedProof);
+      setProof(receivedProof);
 
-      // Submit transaction with scanned proof
+      // Submit transaction with proof
       await executeWithProof({
         walletAddress: txRequest.walletAddress,
         to: txRequest.to,
         value: txRequest.value,
         data: txRequest.data,
-        proof: scannedProof,
+        proof: receivedProof,
       });
 
       setExecutionStatus("success");
@@ -152,9 +249,12 @@ export function TransactionExecution({
       setTxRequest(null);
       setProof(null);
       setShowQRRequest(false);
+      setProofMethod(null);
+      setIsPolling(false);
     } catch (error) {
       console.error("Failed to execute transaction:", error);
       setExecutionStatus("failed");
+      setIsPolling(false);
       toast.error(
         error instanceof Error
           ? error.message
@@ -163,11 +263,17 @@ export function TransactionExecution({
     }
   };
 
+  const handleProofScanned = async (scannedProof: SolidityProof) => {
+    await handleProofReceived(scannedProof);
+  };
+
   const handleCancelTransaction = () => {
     setTxRequest(null);
     setProof(null);
     setShowQRRequest(false);
     setShowQRScanner(false);
+    setProofMethod(null);
+    setIsPolling(false);
     setExecutionStatus("idle");
     toast.info("Transaction cancelled");
   };
@@ -264,32 +370,58 @@ export function TransactionExecution({
             {/* QR Code Flow Status */}
             {executionStatus === "waiting_proof" && txRequest && (
               <div className="space-y-4">
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                  <h4 className="mb-3 font-semibold text-sm text-primary">
-                    Step 1: Show QR to Authenticator Device
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Scan this QR code with your authenticator device to generate
-                    a proof.
-                  </p>
-                  {showQRRequest && (
-                    <TransactionQRDisplay txRequest={txRequest} />
-                  )}
-                </div>
+                {proofMethod === "online" && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-primary">
+                          Waiting for Proof from Authenticator
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Scan the transaction QR on your authenticator device.
+                          The proof will be automatically uploaded.
+                        </p>
+                      </div>
+                    </div>
+                    {showQRRequest && (
+                      <div className="mt-4">
+                        <TransactionQRDisplay txRequest={txRequest} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                <div className="rounded-lg border border-border bg-muted/50 p-4">
-                  <h4 className="mb-3 font-semibold text-sm">
-                    Step 2: Scan Proof QR from Authenticator
-                  </h4>
-                  <Button
-                    onClick={() => setShowQRScanner(true)}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Open QR Scanner
-                  </Button>
-                </div>
+                {proofMethod === "qr" && (
+                  <>
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <h4 className="mb-3 font-semibold text-sm text-primary">
+                        Step 1: Show QR to Authenticator Device
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Scan this QR code with your authenticator device to
+                        generate a proof.
+                      </p>
+                      {showQRRequest && (
+                        <TransactionQRDisplay txRequest={txRequest} />
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-muted/50 p-4">
+                      <h4 className="mb-3 font-semibold text-sm">
+                        Step 2: Scan Proof QR from Authenticator
+                      </h4>
+                      <Button
+                        onClick={() => setShowQRScanner(true)}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Open QR Scanner
+                      </Button>
+                    </div>
+                  </>
+                )}
 
                 {showQRScanner && (
                   <QRProofScanner
@@ -341,25 +473,47 @@ export function TransactionExecution({
         {executionStatus === "idle" ||
         executionStatus === "failed" ||
         executionStatus === "preparing" ? (
-          <Button
-            onClick={handlePrepareTransaction}
-            disabled={
-              !walletAddress || !recipient || executionStatus === "preparing"
-            }
-            className="w-full"
-          >
-            {executionStatus === "preparing" ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Preparing Transaction...
-              </>
-            ) : (
-              <>
-                <QrCode className="mr-2 h-4 w-4" />
-                Prepare Transaction QR
-              </>
-            )}
-          </Button>
+          <div className="flex w-full gap-2">
+            <Button
+              onClick={() => handlePrepareTransaction("online")}
+              disabled={
+                !walletAddress || !recipient || executionStatus === "preparing"
+              }
+              className="flex-1"
+            >
+              {executionStatus === "preparing" && proofMethod === "online" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparing...
+                </>
+              ) : (
+                <>
+                  <Wifi className="mr-2 h-4 w-4" />
+                  Online Proof
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => handlePrepareTransaction("qr")}
+              disabled={
+                !walletAddress || !recipient || executionStatus === "preparing"
+              }
+              variant="outline"
+              className="flex-1"
+            >
+              {executionStatus === "preparing" && proofMethod === "qr" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparing...
+                </>
+              ) : (
+                <>
+                  <QrCode className="mr-2 h-4 w-4" />
+                  QR Code
+                </>
+              )}
+            </Button>
+          </div>
         ) : executionStatus === "executing" ? (
           <Button disabled className="w-full">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

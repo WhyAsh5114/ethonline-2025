@@ -11,6 +11,7 @@ interface TransactionQRDisplayProps {
     data: `0x${string}`;
     nonce: bigint;
     commitment: bigint;
+    transferId?: string;
   };
 }
 
@@ -22,6 +23,7 @@ export function TransactionQRDisplay({ txRequest }: TransactionQRDisplayProps) {
     data: txRequest.data,
     nonce: txRequest.nonce.toString(),
     commitment: txRequest.commitment.toString(),
+    transferId: txRequest.transferId, // Include transfer ID if present
   });
 
   return (
