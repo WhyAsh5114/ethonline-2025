@@ -75,7 +75,7 @@ contract TOTPWallet is IAccount {
     /// @param verifier The ZK proof verifier contract address
     /// @param anOwner The initial owner of the wallet
     /// @param initialSecretHash Hash of the owner's TOTP secret
-    constructor(IEntryPoint anEntryPoint, TOTPVerifier verifier, address anOwner, uint256 initialSecretHash) {
+    constructor(IEntryPoint anEntryPoint, TOTPVerifier verifier, address anOwner, uint256 initialSecretHash) payable {
         _entryPoint = anEntryPoint;
         _verifier = verifier;
         owner = anOwner;

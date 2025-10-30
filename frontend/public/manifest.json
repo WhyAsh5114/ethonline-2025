@@ -3,7 +3,7 @@
   "short_name": "TOTP Wallet",
   "description": "Zero-knowledge TOTP-based account abstraction wallet",
   "start_url": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",

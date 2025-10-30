@@ -131,7 +131,7 @@ export const totpWalletAbi = [
       { name: 'anOwner', internalType: 'address', type: 'address' },
       { name: 'initialSecretHash', internalType: 'uint256', type: 'uint256' },
     ],
-    stateMutability: 'nonpayable',
+    stateMutability: 'payable',
   },
   { type: 'error', inputs: [], name: 'DirectExecuteDisabled' },
   { type: 'error', inputs: [], name: 'ECDSAInvalidSignature' },

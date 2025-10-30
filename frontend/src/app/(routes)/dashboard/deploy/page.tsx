@@ -98,7 +98,18 @@ export default function DeployPage() {
             </CardHeader>
           </Card>
 
-          <WalletFunding walletAddress={deployedWalletAddress} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Next Steps</CardTitle>
+              <CardDescription>
+                You can add more funds to your wallet or continue to execute
+                transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WalletFunding walletAddress={deployedWalletAddress} />
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end">
             <Button onClick={() => router.push("/dashboard/execute")}>

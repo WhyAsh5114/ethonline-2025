@@ -47,6 +47,21 @@ describe("TOTPWallet", function () {
       assert.equal(walletOwner.toLowerCase(), owner.account.address.toLowerCase());
     });
 
+    it("Should accept ETH during deployment", async function () {
+      const mockEntryPoint = await viem.deployContract("MockEntryPoint");
+      const fundingAmount = parseEther("1.0");
+      
+      const totpWallet = await viem.deployContract("TOTPWallet", [
+        mockEntryPoint.address,
+        verifier.address,
+        owner.account.address,
+        testSecretHash,
+      ], { value: fundingAmount });
+
+      const balance = await publicClient.getBalance({ address: totpWallet.address });
+      assert.equal(balance, fundingAmount);
+    });
+
     it("Should set the correct EntryPoint", async function () {
       const mockEntryPoint = await viem.deployContract("MockEntryPoint");
       const totpWallet = await viem.deployContract("TOTPWallet", [
