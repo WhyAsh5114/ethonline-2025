@@ -16,6 +16,7 @@ export interface DeployWalletParams {
   verifierAddress: Address;
   ownerAddress: Address;
   initialSecretHash: bigint;
+  initialFunding?: bigint; // Optional initial funding amount in wei
 }
 
 export interface ExecuteTransactionParams {
@@ -103,17 +104,20 @@ export function useTOTPWallet(): UseTOTPWalletResult {
             params.initialSecretHash,
           ],
           gas: BigInt(5000000), // Set a reasonable gas limit for contract deployment
+          value: params.initialFunding, // Send ETH with deployment transaction
         });
 
         // Wait for transaction to be mined
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-        if (receipt.contractAddress) {
-          setWalletAddress(receipt.contractAddress);
-          return receipt.contractAddress;
+        if (!receipt.contractAddress) {
+          throw new Error("Failed to get contract address");
         }
 
-        throw new Error("Failed to get contract address");
+        const deployedAddress = receipt.contractAddress;
+        setWalletAddress(deployedAddress);
+
+        return deployedAddress;
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         setError(error);

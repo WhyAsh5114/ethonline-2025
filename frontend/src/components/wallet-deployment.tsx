@@ -3,7 +3,7 @@
 import { AlertCircle, CheckCircle2, Loader2, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { type Address, isAddress } from "viem";
+import { type Address, isAddress, parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ export function WalletDeployment({
 
   const [entryPointAddress, setEntryPointAddress] = useState<string>("");
   const [verifierAddress, setVerifierAddress] = useState<string>("");
+  const [initialFunding, setInitialFunding] = useState<string>("");
   const [deployedWallet, setDeployedWallet] = useState<Address | null>(null);
 
   // Load default addresses on mount
@@ -86,11 +87,16 @@ export function WalletDeployment({
         verifierAddress: verifierAddress as Address,
         ownerAddress: userAddress,
         initialSecretHash: secretHash,
+        initialFunding: initialFunding ? parseEther(initialFunding) : undefined,
       });
 
       if (walletAddress) {
         setDeployedWallet(walletAddress);
-        toast.success("Wallet deployed successfully!");
+        toast.success(
+          initialFunding
+            ? "Wallet deployed and funded successfully!"
+            : "Wallet deployed successfully!",
+        );
         onDeployed?.(walletAddress);
       }
     } catch (error) {
@@ -249,6 +255,24 @@ export function WalletDeployment({
             />
           </div>
         )}
+
+        <div className="space-y-2">
+          <Label htmlFor="funding">Initial Funding (ETH) - Optional</Label>
+          <Input
+            id="funding"
+            type="number"
+            step="0.001"
+            min="0"
+            placeholder="0.1"
+            value={initialFunding}
+            onChange={(e) => setInitialFunding(e.target.value)}
+            disabled={isDeploying || !secretHash}
+          />
+          <p className="text-xs text-muted-foreground">
+            Fund your wallet during deployment to skip the separate funding
+            step. Recommended: 0.01 ETH or more for gas fees
+          </p>
+        </div>
       </CardContent>
       <CardFooter>
         <Button
@@ -259,12 +283,14 @@ export function WalletDeployment({
           {isDeploying ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Deploying Wallet...
+              {initialFunding
+                ? "Deploying & Funding..."
+                : "Deploying Wallet..."}
             </>
           ) : (
             <>
               <Wallet className="mr-2 h-4 w-4" />
-              Deploy Wallet
+              {initialFunding ? "Deploy & Fund Wallet" : "Deploy Wallet"}
             </>
           )}
         </Button>
