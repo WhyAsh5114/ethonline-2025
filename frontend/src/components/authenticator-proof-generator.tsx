@@ -415,37 +415,6 @@ export function AuthenticatorProofGenerator({
                       Proof Uploaded Successfully
                     </p>
                     <p className="mt-1 text-muted-foreground">
-                      The transaction device will execute the transaction
-                      automatically.
-                    </p>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    setTxRequest(null);
-                    setTotpCode("");
-                    setProof(null);
-                    setStatus("idle");
-                    setCurrentQRIndex(0);
-                  }}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Generate Another Proof
-                </Button>
-              </div>
-            )}
-
-            {status === "uploaded" && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
-                  <div className="flex-1 text-sm">
-                    <p className="font-medium text-foreground">
-                      Proof Uploaded Successfully
-                    </p>
-                    <p className="mt-1 text-muted-foreground">
                       Your proof has been uploaded. The transaction will execute
                       automatically on the other device.
                     </p>
