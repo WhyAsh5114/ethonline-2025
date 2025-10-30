@@ -20,6 +20,7 @@ interface TransactionRequest {
   nonce: bigint;
   commitment: bigint;
   walletAddress: Address;
+  transferId?: string;
 }
 
 interface QRTransactionScannerProps {
@@ -49,6 +50,7 @@ export function QRTransactionScanner({
           nonce: BigInt(parsedData.nonce),
           commitment: BigInt(parsedData.commitment),
           walletAddress: parsedData.walletAddress,
+          transferId: parsedData.transferId, // Include transferId if present
         };
 
         onTransactionScanned(txRequest);
