@@ -89,7 +89,8 @@ export function TransactionExecution({
       if (!isMounted) return;
 
       try {
-        const result = await fetchProof(txRequest.transferId!);
+        if (!txRequest.transferId) return;
+        const result = await fetchProof(txRequest.transferId);
 
         if (result.success && result.proof && isMounted) {
           setIsPolling(false);

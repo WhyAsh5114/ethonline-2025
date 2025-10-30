@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { generatePoseidonTOTPCode } from "@/lib/totp";
 import { uploadProof } from "@/lib/proof-transfer-actions";
+import { generatePoseidonTOTPCode } from "@/lib/totp";
 
 interface TransactionRequest {
   to: Address;
@@ -500,19 +500,15 @@ export function AuthenticatorProofGenerator({
                       ? "Generating Proof..."
                       : "Uploading Proof..."}
                   </>
+                ) : txRequest?.transferId ? (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Generate & Upload Proof
+                  </>
                 ) : (
                   <>
-                    {txRequest?.transferId ? (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Generate & Upload Proof
-                      </>
-                    ) : (
-                      <>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Generate Proof
-                      </>
-                    )}
+                    <QrCode className="mr-2 h-4 w-4" />
+                    Generate Proof
                   </>
                 )}
               </Button>
