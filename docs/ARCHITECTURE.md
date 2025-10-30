@@ -184,6 +184,72 @@ if (publicSignals[3] != expectedCommitment) revert TxCommitmentMismatch()
 
 ## Two-Device QR Authentication
 
+### Proof Transfer Methods
+
+ChronoVault supports two methods for transferring proofs between devices:
+
+#### 1. **QR Code Transfer** (Offline, Privacy-First)
+
+Traditional QR-based proof transfer that works completely offline:
+
+```
+Transaction Device         Authenticator Device
+------------------         --------------------
+Generate tx QR     ──────> Scan tx QR
+                           Generate proof
+                   <────── Display proof as 3 QR codes
+Scan proof QRs
+Submit to chain
+```
+
+**Advantages:**
+- Works completely offline
+- No internet connection required
+- Maximum privacy (no data leaves devices)
+- Air-gapped security
+
+**Use Case**: Privacy-sensitive transactions, offline environments
+
+#### 2. **Online Proof Transfer** (Convenient, Modern)
+
+Database-backed proof transfer with automatic polling:
+
+```
+Transaction Device         Database           Authenticator Device
+------------------         --------           --------------------
+1. Generate UUID
+2. Create DB entry
+3. Show tx QR with UUID ──────────────────> 4. Scan tx QR
+                                              5. Generate proof
+                           <──────────────── 6. Upload proof
+7. Poll for proof ────────> 
+<─────────────────── 8. Return proof
+9. Auto-execute tx
+```
+
+**Advantages:**
+- Single QR code scan (includes UUID)
+- Automatic execution (no manual scanning of proof QR)
+- Better UX for frequent users
+- No multi-part QR complexity
+
+**Use Case**: Regular transactions, convenience-focused users
+
+**Implementation:**
+- PostgreSQL database with Prisma ORM
+- Next.js Server Actions for type-safe API
+- 2-second polling interval
+- Proof stored as JSON (automatically parsed)
+
+```typescript
+// Database schema
+model ProofTransfer {
+  id        String    @id  // UUID
+  proof     Json?          // SolidityProof (null until uploaded)
+  createdAt DateTime  @default(now())
+}
+```
+
 ### Architecture
 
 True two-factor authentication with proper device separation:
