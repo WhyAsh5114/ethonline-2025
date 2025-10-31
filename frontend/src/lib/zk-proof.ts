@@ -119,9 +119,7 @@ export async function generateZKProof(
     const totpCodeStr = totpCode.padStart(6, "0");
 
     if (expectedCodeStr !== totpCodeStr) {
-      throw new Error(
-        `TOTP code mismatch. Expected: ${expectedCodeStr}, Got: ${totpCodeStr}`,
-      );
+      throw new Error("Invalid TOTP code");
     }
 
     // Calculate transaction commitment
