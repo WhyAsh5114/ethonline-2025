@@ -114,9 +114,13 @@ export async function generateZKProof(
     const expectedCode =
       BigInt(poseidon.F.toString(totpHash)) % BigInt(1000000);
 
-    if (expectedCode.toString() !== totpCode.toString()) {
+    // Ensure both codes are padded to 6 digits for comparison
+    const expectedCodeStr = expectedCode.toString().padStart(6, "0");
+    const totpCodeStr = totpCode.padStart(6, "0");
+
+    if (expectedCodeStr !== totpCodeStr) {
       throw new Error(
-        `TOTP code mismatch. Expected: ${expectedCode}, Got: ${totpCode}`,
+        `TOTP code mismatch. Expected: ${expectedCodeStr}, Got: ${totpCodeStr}`,
       );
     }
 
