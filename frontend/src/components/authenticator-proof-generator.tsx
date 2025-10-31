@@ -61,20 +61,39 @@ export function AuthenticatorProofGenerator({
   const [status, setStatus] = useState<
     "idle" | "generating" | "ready" | "uploaded" | "failed"
   >("idle");
+  const [timeRemaining, setTimeRemaining] = useState(30);
 
-  // Auto-generate TOTP code when transaction is scanned
+  // Auto-generate and sync TOTP code in real-time
   useEffect(() => {
-    if (txRequest && !totpCode) {
-      generatePoseidonTOTPCode(secret)
-        .then((code) => {
-          setTotpCode(code);
-        })
-        .catch((error) => {
-          console.error("Failed to generate TOTP:", error);
-          toast.error("Failed to generate TOTP code");
-        });
-    }
-  }, [txRequest, secret, totpCode]);
+    if (!txRequest) return;
+
+    const updateTOTP = async () => {
+      try {
+        const code = await generatePoseidonTOTPCode(secret);
+        setTotpCode(code);
+      } catch (error) {
+        console.error("Failed to generate TOTP:", error);
+        toast.error("Failed to generate TOTP code");
+      }
+    };
+
+    // Generate immediately
+    updateTOTP();
+
+    // Update TOTP every second to sync with time remaining
+    const interval = setInterval(() => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = 30 - (now % 30);
+      setTimeRemaining(remaining);
+
+      // Regenerate TOTP when it expires (every 30 seconds)
+      if (remaining === 30) {
+        updateTOTP();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [txRequest, secret]);
 
   const handleTransactionScanned = (scannedRequest: TransactionRequest) => {
     setTxRequest(scannedRequest);
@@ -91,6 +110,14 @@ export function AuthenticatorProofGenerator({
 
     if (!totpCode || totpCode.length !== 6) {
       toast.error("Please enter a valid 6-digit TOTP code");
+      return;
+    }
+
+    // Prevent proof generation if TOTP is about to expire (less than 5 seconds remaining)
+    if (timeRemaining < 5) {
+      toast.error(
+        "TOTP code is about to expire. Please wait for the next code.",
+      );
       return;
     }
 
@@ -302,21 +329,41 @@ export function AuthenticatorProofGenerator({
 
             {status !== "ready" && (
               <div className="space-y-2">
-                <Label htmlFor="totpCode">Enter TOTP Code</Label>
-                <Input
-                  id="totpCode"
-                  type="text"
-                  placeholder="000000"
-                  value={totpCode}
-                  onChange={(e) =>
-                    setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  disabled={isGenerating}
-                  maxLength={6}
-                  className="font-mono text-center text-2xl tracking-widest"
-                />
+                <Label htmlFor="totpCode">Current TOTP Code</Label>
+                <div className="relative">
+                  <Input
+                    id="totpCode"
+                    type="text"
+                    placeholder="000000"
+                    value={totpCode}
+                    readOnly
+                    disabled={isGenerating}
+                    maxLength={6}
+                    className="font-mono text-center text-2xl tracking-widest"
+                  />
+                  {/* Time remaining indicator */}
+                  <div className="absolute inset-x-0 bottom-0 h-1 overflow-hidden rounded-b-md bg-muted">
+                    <div
+                      className={`h-full transition-all duration-1000 ease-linear ${
+                        timeRemaining <= 5
+                          ? "bg-destructive"
+                          : timeRemaining <= 10
+                            ? "bg-yellow-500"
+                            : "bg-primary"
+                      }`}
+                      style={{
+                        width: `${(timeRemaining / 30) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Enter the current 6-digit code from this device
+                  Code auto-syncs with device • Expires in {timeRemaining}s
+                  {timeRemaining <= 5 && (
+                    <span className="ml-2 font-medium text-destructive">
+                      (Waiting for new code...)
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -397,6 +444,7 @@ export function AuthenticatorProofGenerator({
                     setProof(null);
                     setStatus("idle");
                     setCurrentQRIndex(0);
+                    setTimeRemaining(30);
                   }}
                   variant="outline"
                   className="w-full"
@@ -428,6 +476,7 @@ export function AuthenticatorProofGenerator({
                     setProof(null);
                     setStatus("idle");
                     setCurrentQRIndex(0);
+                    setTimeRemaining(30);
                   }}
                   variant="outline"
                   className="w-full"
@@ -458,7 +507,8 @@ export function AuthenticatorProofGenerator({
                   !totpCode ||
                   totpCode.length !== 6 ||
                   isGenerating ||
-                  isUploading
+                  isUploading ||
+                  timeRemaining < 5
                 }
                 className="w-full"
               >
@@ -468,6 +518,11 @@ export function AuthenticatorProofGenerator({
                     {isGenerating
                       ? "Generating Proof..."
                       : "Uploading Proof..."}
+                  </>
+                ) : timeRemaining < 5 ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Waiting for new TOTP code...
                   </>
                 ) : txRequest?.transferId ? (
                   <>
